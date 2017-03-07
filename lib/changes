@@ -1,0 +1,105 @@
+cfg.TRAIN.BATCH_SIZE = 3 * 128
+minibatch.py => get_minibatch
+	assert len(im_scales) == 3, "Triplet batch only"
+	assert len(roidb) == 3, "Triplet batch only"
+	blobs['gt_boxes'] = []
+	blobs['im_info']
+layer.py ==> setup
+	reshape
+	forward
+
+anchor_target_layer.py ==> setup
+	top.reshape
+anchor_target_layer.py ==> forward
+	assert bottom[0].data.shape[0] == 3
+	for {}
+	top.reshape
+	label memory
+
+proposal_layer.py ==> setup
+	top.reshape
+proposal_layer.py ==> forward
+	assert bottom[0].data.shape[0] == 3
+	bbox_deltas = bottom[1].data	copy or reference
+	for {}
+	shape[0] < post_nms_topN
+	batch_inds.fill(batch_image)
+
+proposal_target_layer ==> forward
+	assert
+	num_images = 3
+	sides.fill(batch_image)
+	for {}
+
+
+.
+├── datasets
+│   ├── coco.py
+│   ├── ds_utils.py
+│   ├── factory.py
+│   ├── imdb.py
+│   ├── __init__.py
+│   ├── pascal_voc.py
+│   ├── psdb.py
+│   ├── tools
+│   │   └── mcg_munge.py
+│   ├── VOCdevkit-matlab-wrapper
+│   │   ├── get_voc_opts.m
+│   │   ├── voc_eval.m
+│   │   └── xVOCap.m
+│   └── voc_eval.py
+├── fast_rcnn
+│   ├── bbox_transform.py
+│   ├── config.py
+│   ├── __init__.py
+│   ├── nms_wrapper.py
+│   ├── test_gallery.py
+│   ├── test_probe.py
+│   ├── test.py
+│   └── train.py
+├── Makefile
+├── nms
+│   ├── cpu_nms.pyx
+│   ├── gpu_nms.pyx
+│   ├── __init__.py
+│   ├── nms_kernel.cu
+│   └── py_cpu_nms.py
+├── pycocotools
+│   ├── cocoeval.py
+│   ├── coco.py
+│   ├── __init__.py
+│   ├── license.txt
+│   ├── maskApi.c
+│   ├── maskApi.h
+│   ├── _mask.c
+│   ├── mask.py
+│   ├── mask.pyc
+│   ├── _mask.pyx
+│   ├── _mask.so
+│   └── UPSTREAM_REV
+├── roi_data_layer
+│   ├── __init__.py
+│   ├── layer.py
+│   ├── minibatch.py
+│   ├── pair_layer.py
+│   ├── pair_minibatch.py
+│   └── roidb.py
+├── rpn
+│   ├── anchor_target_layer.py
+│   ├── generate_anchors.py
+│   ├── generate.py
+│   ├── __init__.py
+│   ├── proposal_layer_test.py
+│   ├── proposal_layer_train.py
+│   ├── proposal_target_layer.py
+│   └── README.md
+├── setup.py
+├── transform
+│   ├── __init__.py
+│   └── torch_image_transform_layer.py
+└── utils
+    ├── bbox.pyx
+    ├── blob.py
+    ├── __init__.py
+    └── timer.py
+

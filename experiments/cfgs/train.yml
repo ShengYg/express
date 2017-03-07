@@ -1,0 +1,25 @@
+EXP_DIR: .
+TRAIN:
+# all
+  SNAPSHOT_ITERS: 5000
+  # SCALES:  !!python/tuple [592,]
+  # MAX_SIZE: 992
+  HAS_RPN: True
+  IMS_PER_BATCH: 1
+  BATCH_SIZE: 128
+  FG_FRACTION: 0.25
+# small batchsize
+#   FG_THRESH: 0.6
+#   BG_THRESH_HI: 0.6
+#   BG_THRESH_LO: 0.0
+# large batchsize
+  FG_THRESH: 0.5
+  BG_THRESH_HI: 0.5
+  BG_THRESH_LO: 0.0
+
+  BBOX_NORMALIZE_TARGETS_PRECOMPUTED: True
+  PROPOSAL_METHOD: gt
+TEST:
+  HAS_RPN: True
+  # SCALES:  !!python/tuple [224,]
+  # MAX_SIZE: 224
