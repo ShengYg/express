@@ -3,9 +3,9 @@ import os
 import numpy as np
 import cPickle
 import random
-import cv2
 from progressbar import ProgressBar
 import time
+from PIL import Image
 
 def get_box(filename):
     if not os.path.exists(filename):
@@ -57,10 +57,11 @@ def split_box_vertical(box):
         return phones1 + phones2, np.vstack((box_phone1, box_phone2))
 
 if __name__ == '__main__':
-    path = '/home/sy/code/re_id/data/expressdata/'
+    path = '/home/sy/code/re_id/express/data/express/dataset/'
     box_two_thres = 60
     box_height_thres = 30
-    info_all = []
+    info_all = {}
+    namelist = []
     if not os.path.isdir(path):
         print 'error data dir path {}'.format(path)
     filelist = sorted(os.listdir(path))
@@ -75,17 +76,29 @@ if __name__ == '__main__':
         num, suffix = filename.split('.')[0], filename.split('.')[1]
         if suffix == 'xml':
             box_num = get_box(path + filename)
-            info = [num + '.jpg', box_num]  #(filename, box_num, nums, box_phone, phones, reserved)
             if box_num.shape[0] < 4:
-                info.extend([0, np.array([[0,0,0,0]]), 0, False])
                 continue
+            info_all[num + '.jpg'] = [box_num]
             phones, box_phone = split_box_vertical(box_num)
-            info.extend([box_num.shape[0], box_phone, phones, True])
-            info_all.append(info)
+            info_all[num + '.jpg'].extend([box_num.shape[0], box_phone, phones])
+            namelist.append(num + '.jpg')
+            # get img info
+            sourcefile = path + num + '.jpg'
+            if not os.path.isfile(sourcefile):
+                raise Exception('No file.jpg')
+            else:
+                img = Image.open(sourcefile)
+                img_size = img.size
+                info_all[num + '.jpg'].append(img_size)
+
         i += 1
         pbar.update(i)
     pbar.finish()
 
-    cache_file = '/home/sy/code/re_id/data/info.pkl'
+    # info_all: [num_box, nums, phone_box, phones, img_size, phone_label]
+    cache_file = '/home/sy/code/re_id/express/data/express/info.pkl'
     with open(cache_file, 'wb') as fid:
         cPickle.dump(info_all, fid, cPickle.HIGHEST_PROTOCOL)
+    cache_file = '/home/sy/code/re_id/express/data/express/namelist.pkl'
+    with open(cache_file, 'wb') as fid:
+        cPickle.dump(namelist, fid, cPickle.HIGHEST_PROTOCOL)
