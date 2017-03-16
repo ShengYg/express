@@ -36,10 +36,6 @@ class ProposalTargetLayer(caffe.Layer):
     def setup(self, bottom, top):
         layer_params = yaml.load(self.param_str)
         self._num_classes = layer_params['num_classes'] #21
-        if 'bg_aux_label' in layer_params:
-            self._bg_aux_label = layer_params['bg_aux_label']
-        else:
-            self._bg_aux_label = 0
 
         # sampled rois (0, x1, y1, x2, y2)
         top[0].reshape(1, 5)
@@ -71,7 +67,6 @@ class ProposalTargetLayer(caffe.Layer):
         rois_all = []
         bbox_targets_all = []
         bbox_inside_weights_all = []
-        out_aux_label = []
 
         for batch_image in range(num_images):
             inds_i = np.where(all_rois[:,0] == batch_image)[0]
@@ -88,9 +83,9 @@ class ProposalTargetLayer(caffe.Layer):
             # rois                  N * 5
             # bbox_targets          N * (4 * num_classes)
             # bbox_inside_weights   N * (4 * num_classes)
-            labels, rois, bbox_targets, bbox_inside_weights ,aux_label = _sample_rois(
+            labels, rois, bbox_targets, bbox_inside_weights = _sample_rois(
                 all_rois_i, gt_boxes_i, fg_rois_per_image,
-                rois_per_image, self._num_classes, self._bg_aux_label)
+                rois_per_image, self._num_classes)
 
             if DEBUG:
                 print 'num fg: {}'.format((labels > 0).sum())
@@ -105,8 +100,6 @@ class ProposalTargetLayer(caffe.Layer):
             if labels_all == [] and labels != []:
                 labels = labels.reshape(len(labels),1)
                 labels_all = labels
-                aux_label = aux_label.reshape(len(aux_label),1)
-                out_aux_label = aux_label
                 rois_all = rois
                 bbox_targets_all = bbox_targets
                 bbox_inside_weights_all = bbox_inside_weights
@@ -114,8 +107,6 @@ class ProposalTargetLayer(caffe.Layer):
                 if labels != []:
                     labels = labels.reshape(len(labels),1)
                     labels_all = np.vstack((labels_all,labels))
-                    aux_label = aux_label.reshape(len(aux_label),1)
-                    out_aux_label = np.vstack((out_aux_label,aux_label))
                     rois_all = np.vstack((rois_all,rois))
                     bbox_targets_all = np.vstack((bbox_targets_all,bbox_targets))
                     bbox_inside_weights_all = np.vstack((bbox_inside_weights_all,bbox_inside_weights))
@@ -141,13 +132,6 @@ class ProposalTargetLayer(caffe.Layer):
         top[4].reshape(*bbox_inside_weights_all.shape)
         top[4].data[...] = np.array(bbox_inside_weights_all > 0).astype(np.float32)
 
-        # auxiliary label
-        #   pid label for RoiDataLayer
-        #   pair label for PairRoiDataLayer
-        if len(top) > 5:
-            assert out_aux_label is not None, "Auxiliary labels are not provided"
-            top[5].reshape(*out_aux_label.shape)
-            top[5].data[...] = out_aux_label
 
     def backward(self, top, propagate_down, bottom):
         """This layer does not propagate gradients."""
@@ -197,7 +181,7 @@ def _compute_targets(ex_rois, gt_rois, labels):
     return np.hstack(
             (labels[:, np.newaxis], targets)).astype(np.float32, copy=False)
 
-def _sample_rois(all_rois, gt_boxes, fg_rois_per_image, rois_per_image, num_classes, bg_aux_label):
+def _sample_rois(all_rois, gt_boxes, fg_rois_per_image, rois_per_image, num_classes):
     """Generate a random sample of RoIs comprising foreground and background
     examples.
     """
@@ -235,14 +219,7 @@ def _sample_rois(all_rois, gt_boxes, fg_rois_per_image, rois_per_image, num_clas
     # Clamp labels for the background RoIs to 0
     labels[fg_rois_per_this_image:] = 0
     rois = all_rois[keep_inds]
-    # Auxiliary label if available
-    aux_label = None
-    if gt_boxes.shape[1] > 5:
-        aux_label = gt_boxes[gt_assignment, 5]
-        aux_label = aux_label[keep_inds]
-        aux_label[fg_rois_per_this_image:] = bg_aux_label
-        # inds = np.where(aux_label == -1)
-        # aux_label[inds] = bg_aux_label
+
 
     # bbox_target_data: (label, target_x1, target_y1, target_x2, target_y2)
     bbox_target_data = _compute_targets(
@@ -251,16 +228,11 @@ def _sample_rois(all_rois, gt_boxes, fg_rois_per_image, rois_per_image, num_clas
     bbox_targets, bbox_inside_weights = \
         _get_bbox_regression_labels(bbox_target_data, num_classes)
 
-    # length = 0 
-    # for item in aux_label:
-    #     if item != 5532:
-    #         length += 1
-    # print "========================="
-    # print aux_label.shape
-    # print "{}:{}".format(len(fg_inds), len(bg_inds))
-    # print "{}:{}".format(length, len(aux_label) - length)
 
-    return labels, rois, bbox_targets, bbox_inside_weights, aux_label
+    # print "========================="
+    # print "{}:{}".format(len(fg_inds), len(bg_inds))
+
+    return labels, rois, bbox_targets, bbox_inside_weights
     # labels                N
     # rois                  N * 5
     # bbox_targets          N * (4 * num_classes)

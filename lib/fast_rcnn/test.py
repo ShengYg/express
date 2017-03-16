@@ -120,18 +120,6 @@ def im_detect(net, im, boxes=None):
     """
     blobs, im_scales = _get_blobs(im, boxes)
 
-    # When mapping from image ROIs to feature map ROIs, there's some aliasing
-    # (some distinct image ROIs get mapped to the same feature ROI).
-    # Here, we identify duplicate feature ROIs, so we only compute features
-    # on the unique subset.
-    if cfg.DEDUP_BOXES > 0 and not cfg.TEST.HAS_RPN:
-        v = np.array([1, 1e3, 1e6, 1e9, 1e12])
-        hashes = np.round(blobs['rois'] * cfg.DEDUP_BOXES).dot(v)
-        _, index, inv_index = np.unique(hashes, return_index=True,
-                                        return_inverse=True)
-        blobs['rois'] = blobs['rois'][index, :]
-        boxes = boxes[index, :]
-
     if cfg.TEST.HAS_RPN:
         im_blob = blobs['data']
         blobs['im_info'] = np.array(
@@ -142,8 +130,6 @@ def im_detect(net, im, boxes=None):
     net.blobs['data'].reshape(*(blobs['data'].shape))
     if cfg.TEST.HAS_RPN:
         net.blobs['im_info'].reshape(*(blobs['im_info'].shape))
-    else:
-        net.blobs['rois'].reshape(*(blobs['rois'].shape))
 
     # do forward
     forward_kwargs = {'data': blobs['data'].astype(np.float32, copy=False)}
@@ -156,30 +142,15 @@ def im_detect(net, im, boxes=None):
     if cfg.TEST.HAS_RPN:
         assert len(im_scales) == 1, "Only single-image batch implemented"
         rois = net.blobs['rois'].data.copy()
-        # unscale back to raw image space
         boxes = rois[:, 1:5] / im_scales[0]
         
-    if cfg.TEST.SVM:
-        # use the raw scores before softmax under the assumption they
-        # were trained as linear SVMs
-        scores = net.blobs['cls_score'].data
-    else:
-        # use softmax estimated probabilities
-        scores = blobs_out['cls_prob']
+    scores = blobs_out['cls_prob']
 
     if cfg.TEST.BBOX_REG:
         # Apply bounding-box regression deltas
         box_deltas = blobs_out['bbox_pred']
         pred_boxes = bbox_transform_inv(boxes, box_deltas)
         pred_boxes = clip_boxes(pred_boxes, im.shape)
-    else:
-        # Simply repeat the boxes, once for each class
-        pred_boxes = np.tile(boxes, (1, scores.shape[1]))
-
-    if cfg.DEDUP_BOXES > 0 and not cfg.TEST.HAS_RPN:
-        # Map scores and predictions back to the original set of boxes
-        scores = scores[inv_index, :]
-        pred_boxes = pred_boxes[inv_index, :]
 
     return scores, pred_boxes
 
@@ -227,9 +198,6 @@ def apply_nms(all_boxes, thresh):
 def test_net(net, imdb, max_per_image=100, thresh=0.05, vis=False):
     """Test a Fast R-CNN network on an image database."""
     num_images = len(imdb.image_index)
-    # all detections are collected into:
-    #    all_boxes[cls][image] = N x 5 array of detections in
-    #    (x1, y1, x2, y2, score)
     all_boxes = [[[] for _ in xrange(num_images)]
                  for _ in xrange(imdb.num_classes)]
     output_dir = get_output_dir(imdb, net)
@@ -238,31 +206,20 @@ def test_net(net, imdb, max_per_image=100, thresh=0.05, vis=False):
     if os.path.exists(cache_file):
         with open(cache_file, 'rb') as fid:
             all_boxes = cPickle.load(fid)
-        print "load gallery_detections"
+        print "load phone_detections"
     else:
         print "not find"
         # timers
         _t = {'im_detect' : Timer(), 'misc' : Timer()}
 
-        if not cfg.TEST.HAS_RPN:
-            roidb = imdb.roidb
-
         for i in xrange(num_images):
             # filter out any ground truth boxes
             if cfg.TEST.HAS_RPN:
                 box_proposals = None
-            else:
-                # The roidb may contain ground-truth rois (for example, if the roidb
-                # comes from the training or val split). We only want to evaluate
-                # detection on the *non*-ground-truth rois. We select those the rois
-                # that have the gt_classes field set to 0, which means there's no
-                # ground truth.
-                box_proposals = roidb[i]['boxes'][roidb[i]['gt_classes'] == 0]
 
             im = cv2.imread(imdb.image_path_at(i))
             _t['im_detect'].tic()
             scores, boxes = im_detect(net, im, box_proposals)
-            # scores:[n * num_cls], boxes:[n * 4 * num_cls]
             _t['im_detect'].toc()
 
             _t['misc'].tic()

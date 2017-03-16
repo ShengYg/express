@@ -28,38 +28,6 @@ gt_boxes    num * 5 ==> 3 * num * 5     the rest are all 0
 '''
 # len(input_list) = 8808
 class RoIDataLayer(caffe.Layer):
-    """Fast R-CNN data layer used for training."""
-
-    def _shuffle_input_list_inds(self):
-        """Randomly permute the training roidb."""
-        def choose(i, len_pid, id_num):
-            list = range(len_pid)
-            list.remove(i)
-            return random.sample(list, id_num - 1) + [i]
-
-
-        id_num = cfg.TRAIN.LAYER_ID_NUM
-        sample_num = cfg.TRAIN.LAYER_SAMPLE_NUM
-        self._input_list = []
-        len_pid = len(self._pid_and_index)
-        select = range(len_pid)
-        for pid in range(len_pid):
-            pid_all = choose(pid, len_pid, id_num)
-            item_all = [self._pid_and_index[i] for i in pid_all]
-            item_list = []
-            for item in item_all:
-                item_list.extend(random.sample(item, sample_num))
-            self._input_list.append(item_list)
-
-        cache_path = os.path.abspath(os.path.join(cfg.DATA_DIR, 'cache'))
-        input_list_cache = os.path.join(cache_path, 'psdb_train' + '_input_list.pkl')
-        with open(input_list_cache, 'wb') as fid:
-            cPickle.dump(self._input_list, fid, cPickle.HIGHEST_PROTOCOL)
-        print "wrote input list to {}".format(input_list_cache)
-        print "input_list len: {}".format(len(self._input_list))
-
-        self._perm = np.random.permutation(np.arange(len(self._input_list)))
-        self._cur = 0
 
     def _shuffle_roidb_inds(self):
         """Randomly permute the training roidb."""
@@ -81,16 +49,6 @@ class RoIDataLayer(caffe.Layer):
             self._perm = np.random.permutation(np.arange(len(self._roidb)))
         self._cur = 0
 
-    # def _get_next_minibatch_inds(self): # triplet
-    #     """Return the roidb indices for the next minibatch."""
-    #     if self._cur + 1 >= len(self._input_list):
-    #         self._shuffle_input_list_inds()
-
-    #     # db_inds = self._input_list[self._cur]
-    #     db_inds = self._input_list[self._perm[self._cur]]
-    #     self._cur += 1
-    #     return db_inds
-
     def _get_next_minibatch_inds(self): # softmax
         """Return the roidb indices for the next minibatch."""
         if self._cur + cfg.TRAIN.IMS_PER_BATCH >= len(self._roidb):
@@ -111,14 +69,9 @@ class RoIDataLayer(caffe.Layer):
         minibatch_db = [self._roidb[i] for i in db_inds]
         return get_minibatch(minibatch_db, self._num_classes)   # _num_classes: 21
 
-    def set_roidb(self, roidb, pid_and_index):
+    def set_roidb(self, roidb):
         """Set the roidb to be used by this layer during training."""
         self._roidb = roidb
-        # triplet
-        # self._pid_and_index = pid_and_index
-        # self._input_list = []
-        # self._shuffle_input_list_inds()
-        # softmax
         self._shuffle_roidb_inds()
 
     def setup(self, bottom, top):

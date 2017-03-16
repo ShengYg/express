@@ -31,90 +31,37 @@ def get_minibatch(roidb, num_classes):
 
     blobs = {'data': im_blob}
 
-    if cfg.TRAIN.HAS_RPN:
-        assert len(im_scales) == num_images, "{} batch only".format(num_images)
-        assert len(roidb) == num_images, "{} batch only".format(num_images)
-        # gt boxes: (x1, y1, x2, y2, cls)
-        # blobs['gt_boxes'] = []
-        
-        gt_boxes_all = []
-        im_inds_all = []
-        im_info_all = []
-        for i in range(num_images):
-            gt_inds = np.where(roidb[i]['gt_classes'] != 0)[0]
-            gt_boxes = np.empty((len(gt_inds), 5), dtype=np.float32)
-            im_inds = np.empty((len(gt_inds), 1), dtype=np.float32)
+    assert len(im_scales) == num_images, "{} batch only".format(num_images)
+    assert len(roidb) == num_images, "{} batch only".format(num_images)
+    # gt boxes: (x1, y1, x2, y2, cls)
+    # blobs['gt_boxes'] = []
+    
+    gt_boxes_all = []
+    im_inds_all = []
+    im_info_all = []
+    for i in range(num_images):
+        gt_inds = np.where(roidb[i]['gt_classes'] != 0)[0]
+        gt_boxes = np.empty((len(gt_inds), 5), dtype=np.float32)
+        im_inds = np.empty((len(gt_inds), 1), dtype=np.float32)
 
-            gt_boxes[:, 0:4] = roidb[i]['boxes'][gt_inds, :] * im_scales[i]
-            gt_boxes[:, 4] = roidb[i]['gt_classes'][gt_inds]
-            im_inds[:] = i
-            if 'gt_pids' in roidb[i]:
-                gt_boxes = np.hstack(
-                    [gt_boxes, roidb[i]['gt_pids'][gt_inds, np.newaxis]])
-            if gt_boxes_all == []:
-                gt_boxes_all = gt_boxes
-                im_inds_all = im_inds
-                im_info_all = np.array([[im_info[i][0], im_info[i][1], im_scales[i]]],dtype=np.float32)
-            else:
-                gt_boxes_all = np.vstack((gt_boxes_all, gt_boxes))
-                im_inds_all = np.vstack((im_inds_all, im_inds))
-                im_info_all = np.vstack((im_info_all, [[im_info[i][0], im_info[i][1], im_scales[i]]]))
-        blobs['gt_boxes'] = gt_boxes_all
-        blobs['im_inds'] = im_inds_all
-        blobs['im_info'] = im_info_all
-    else: # not using RPN
-        # Now, build the region of interest and label blobs
-        # rois_blob = np.zeros((0, 5), dtype=np.float32)
-        # labels_blob = np.zeros((0), dtype=np.float32)
-        # aux_label_blob = np.zeros((0), dtype=np.float32)
-        # bbox_targets_blob = np.zeros((0, 4 * num_classes), dtype=np.float32)
-        # bbox_inside_blob = np.zeros(bbox_targets_blob.shape, dtype=np.float32)
-        rois_blob = []
-        labels_blob = []
-        aux_label_blob = []
-        bbox_targets_blob = []
-        bbox_inside_blob = []
-        for im_i in range(num_images):
-            labels, overlaps, im_rois, bbox_targets, bbox_inside_weights, aux_label \
-                = _sample_rois(roidb[im_i], fg_rois_per_image, rois_per_image,
-                               num_classes)
+        gt_boxes[:, 0:4] = roidb[i]['boxes'][gt_inds, :] * im_scales[i]
+        gt_boxes[:, 4] = roidb[i]['gt_classes'][gt_inds]
+        im_inds[:] = i
+        if 'gt_pids' in roidb[i]:
+            gt_boxes = np.hstack(
+                [gt_boxes, roidb[i]['gt_pids'][gt_inds, np.newaxis]])
+        if gt_boxes_all == []:
+            gt_boxes_all = gt_boxes
+            im_inds_all = im_inds
+            im_info_all = np.array([[im_info[i][0], im_info[i][1], im_scales[i]]],dtype=np.float32)
+        else:
+            gt_boxes_all = np.vstack((gt_boxes_all, gt_boxes))
+            im_inds_all = np.vstack((im_inds_all, im_inds))
+            im_info_all = np.vstack((im_info_all, [[im_info[i][0], im_info[i][1], im_scales[i]]]))
+    blobs['gt_boxes'] = gt_boxes_all
+    blobs['im_inds'] = im_inds_all
+    blobs['im_info'] = im_info_all
 
-            # Add to RoIs blob
-            rois = _project_im_rois(im_rois, im_scales[im_i])
-            batch_ind = im_i * np.ones((rois.shape[0], 1))
-            rois_blob_this_image = np.hstack((batch_ind, rois))
-            if rois_blob == []:
-                rois_blob = rois_blob_this_image
-                labels_blob = labels
-                bbox_targets_blob = bbox_targets
-                bbox_inside_blob = bbox_inside_weights
-                if aux_label is not None:
-                    aux_label_blob = aux_label
-            else:
-                rois_blob = np.vstack((rois_blob, rois_blob_this_image))
-                labels_blob = np.vstack((labels_blob, labels))
-                bbox_targets_blob = np.vstack((bbox_targets_blob, bbox_targets))
-                bbox_inside_blob = np.vstack((bbox_inside_blob, bbox_inside_weights))
-                if aux_label is not None:
-                    aux_label_blob = np.vstack((aux_label_blob, aux_label))
-            # Add to labels, bbox targets, and bbox loss blobs
-            
-            
-            
-            # all_overlaps = np.hstack((all_overlaps, overlaps))
-
-        # For debug visualizations
-        # _vis_minibatch(im_blob, rois_blob, labels_blob, all_overlaps)
-
-        blobs['rois'] = rois_blob
-        blobs['labels'] = labels_blob.reshape((-1, 1))
-        blobs['pid_label'] = aux_label_blob.reshape((-1, 1))
-
-        if cfg.TRAIN.BBOX_REG:
-            blobs['bbox_targets'] = bbox_targets_blob
-            blobs['bbox_inside_weights'] = bbox_inside_blob
-            blobs['bbox_outside_weights'] = \
-                np.array(bbox_inside_blob > 0).astype(np.float32)
     return blobs
 
 def _sample_rois(roidb, fg_rois_per_image, rois_per_image, num_classes):
@@ -169,15 +116,6 @@ def _sample_rois(roidb, fg_rois_per_image, rois_per_image, num_classes):
 
     bbox_targets, bbox_inside_weights = _get_bbox_regression_labels(
             roidb['bbox_targets'][keep_inds, :], num_classes)
-
-    # length = 0 
-    # for item in aux_label:
-    #     if item != 5532:
-    #         length += 1
-    # print "========================="
-    # print aux_label.shape
-    # print "{}:{}".format(len(fg_inds), len(bg_inds))
-    # print "{}:{}".format(length, len(aux_label) - length)
     
     return labels, overlaps, rois, bbox_targets, bbox_inside_weights, aux_label
 
