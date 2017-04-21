@@ -12,20 +12,20 @@ set -e
 export PYTHONUNBUFFERED="True"
 
 GPU_ID=0
-NET=$1
-DATASET=psdb
+NET="VGG16"
+DATASET=express
 
-array=( $@ )
-len=${#array[@]}
-EXTRA_ARGS=${array[@]:1:$len}
-# EXTRA_ARGS=${array[@]:2:$len}
-EXTRA_ARGS_SLUG=${EXTRA_ARGS// /_}
+# array=( $@ )
+# len=${#array[@]}
+# EXTRA_ARGS=${array[@]:1:$len}
+# # EXTRA_ARGS=${array[@]:2:$len}
+# EXTRA_ARGS_SLUG=${EXTRA_ARGS// /_}
 
 case $DATASET in
-  psdb)
-    TRAIN_IMDB="psdb_train"
-    TEST_IMDB="psdb_test"
-    PT_DIR="psdb_softmax"
+  express)
+    TRAIN_IMDB="express_train"
+    TEST_IMDB="express_test"
+    PT_DIR="express"
     ITERS=150000
     ;;
   *)
@@ -41,7 +41,6 @@ echo Logging output to "$LOG"
 
 # time python tools/train_net.py --gpu ${GPU_ID} \
 #   --solver models/${PT_DIR}/${NET}/solver.prototxt \
-#   --weights output/${DATASET}_pretrain/${NET}_iter_80000.caffemodel \
 #   --imdb ${TRAIN_IMDB} \
 #   --iters ${ITERS} \
 #   --cfg experiments/cfgs/train.yml \
@@ -59,12 +58,10 @@ echo Logging output to "$LOG"
 # NET_FINAL=`grep -B 1 "done solving" ${LOG} | grep "Wrote snapshot" | awk '{print $4}'`
 # set -x
 
-NET_FINAL="output/psdb_pretrain/resnet50_iter_70000.caffemodel"
+NET_FINAL="output/express_train/express_iter_25000.caffemodel"
 time python tools/test_net.py --gpu ${GPU_ID} \
-  --gallery_def models/${PT_DIR}/${NET}/test_gallery.prototxt \
-  --probe_def models/${PT_DIR}/${NET}/test_probe.prototxt \
   --net ${NET_FINAL} \
+  --test_def models/${PT_DIR}/${NET}/test.prototxt \
   --imdb ${TEST_IMDB} \
   --cfg experiments/cfgs/train.yml \
-  --feat_blob res5c \
   ${EXTRA_ARGS}

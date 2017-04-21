@@ -9,32 +9,26 @@
 
 __sets = {}
 
-from datasets.psdb import psdb
-from datasets.psdb import psdbcrop
 from datasets.express import express
+from datasets.phone import phone
 import numpy as np
 
-
-# Set up psdb_<split>
-for split in ['train', 'test']:
-    name = 'psdb_{}'.format(split)
-    __sets[name] = (lambda split=split: psdb(split))
-
-# Set up psdbcrop_<split>
-for split in ['train', 'test']:
-    name = 'psdbcrop_{}'.format(split)
-    __sets[name] = (lambda split=split: psdbcrop(split))
 
 # Set up express_<split>
 for split in ['train', 'test']:
     name = 'express_{}'.format(split)
-    __sets[name] = (lambda split=split: express(split))
+    __sets[name] = (lambda split=split, root_dir=None, ratio=0.8: express(split, root_dir, ratio))
 
-def get_imdb(name):
+# Set up phone_<split>
+for split in ['train', 'test']:
+    name = 'phone_{}'.format(split)
+    __sets[name] = (lambda split=split, root_dir=None, ratio=0.8: phone(split, root_dir, ratio))
+
+def get_imdb(name, root_dir = None, ratio=0.8):
     """Get an imdb (image database) by name."""
     if not __sets.has_key(name):
         raise KeyError('Unknown dataset: {}'.format(name))
-    return __sets[name]()
+    return __sets[name](root_dir=root_dir, ratio=ratio)
 
 def list_imdbs():
     """List all registered imdbs."""

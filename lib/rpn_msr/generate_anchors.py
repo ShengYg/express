@@ -42,23 +42,10 @@ def generate_anchors(base_size=16, ratios=[0.5, 1, 2],
     """
 
     base_anchor = np.array([1, 1, base_size, base_size]) - 1
-    ratio_anchors = _ratio_enum(base_anchor, ratios)        #np.(3, 4) x1,y1,x2,y2
+    ratio_anchors = _ratio_enum(base_anchor, ratios)
     anchors = np.vstack([_scale_enum(ratio_anchors[i, :], scales)
                          for i in xrange(ratio_anchors.shape[0])])
-    return anchors      #np.(9, 4) x1,y1,x2,y2
-
-def generate_anchors_person(base_size=24, ratios=[2.8],
-                            scales=np.array([pow(1.4,i) for i in range(9)])):
-    """
-    Generate anchor (reference) windows by enumerating aspect ratios X
-    scales wrt a reference (0, 0, 15, 15) window.
-    """
-
-    base_anchor = np.array([1, 1, base_size, base_size]) - 1
-    ratio_anchors = _ratio_enum(base_anchor, ratios)        #np.(3, 4) x1,y1,x2,y2
-    anchors = np.vstack([_scale_enum(ratio_anchors[i, :], scales)
-                         for i in xrange(ratio_anchors.shape[0])]).astype(np.int32)
-    return anchors 
+    return anchors
 
 def generate_anchors_express(base_size=24, ratios=[0.25, 0.39, 0.62],
                              scales=np.array([1, 3.2, 10])):
@@ -71,8 +58,8 @@ def generate_anchors_express(base_size=24, ratios=[0.25, 0.39, 0.62],
     ratio_anchors = _ratio_enum(base_anchor, ratios)        #np.(3, 4) x1,y1,x2,y2
     anchors = np.vstack([_scale_enum(ratio_anchors[i, :], scales)
                          for i in xrange(ratio_anchors.shape[0])]).astype(np.int32)
-    return anchors 
-
+    return anchors
+    
 def _whctrs(anchor):
     """
     Return width, height, x center, and y center for an anchor (window).

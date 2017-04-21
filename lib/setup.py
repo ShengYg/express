@@ -15,8 +15,7 @@ import numpy as np
 
 def find_in_path(name, path):
     "Find a file in a search path"
-    # Adapted fom
-    # http://code.activestate.com/recipes/52224-find-a-file-given-a-search-path/
+    # Adapted fom http://code.activestate.com/recipes/52224-find-a-file-given-a-search-path/
     for dir in path.split(os.pathsep):
         binpath = pjoin(dir, name)
         if os.path.exists(binpath):
@@ -55,6 +54,8 @@ def locate_cuda():
             raise EnvironmentError('The CUDA %s path could not be located in %s' % (k, v))
 
     return cudaconfig
+
+
 CUDA = locate_cuda()
 
 
@@ -85,6 +86,7 @@ def customize_compiler_for_nvcc(self):
     # object but distutils doesn't have the ability to change compilers
     # based on source extension: we add it.
     def _compile(obj, src, ext, cc_args, extra_postargs, pp_opts):
+        print extra_postargs
         if os.path.splitext(src)[1] == '.cu':
             # use the cuda for .cu files
             self.set_executable('compiler_so', CUDA['nvcc'])
@@ -115,6 +117,12 @@ ext_modules = [
         ["utils/bbox.pyx"],
         extra_compile_args={'gcc': ["-Wno-cpp", "-Wno-unused-function"]},
         include_dirs = [numpy_include]
+    ),
+    Extension(
+        "utils.cython_nms",
+        ["utils/nms.pyx"],
+        extra_compile_args={'gcc': ["-Wno-cpp", "-Wno-unused-function"]},
+        include_dirs=[numpy_include]
     ),
     Extension(
         "nms.cpu_nms",

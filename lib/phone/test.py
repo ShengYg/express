@@ -195,17 +195,18 @@ def apply_nms(all_boxes, thresh):
             nms_boxes[cls_ind][im_ind] = dets[keep, :].copy()
     return nms_boxes
 
-def test_net(net, imdb, output_dir, max_per_image=100, thresh=0.05, vis=False, iou_thres=0.6):
+def test_net(net, imdb, max_per_image=100, thresh=0.05, vis=False, iou_thres=0.6):
     """Test a Fast R-CNN network on an image database."""
     num_images = len(imdb.image_index)
     all_boxes = [[[] for _ in xrange(num_images)]
                  for _ in xrange(imdb.num_classes)]
+    output_dir = get_output_dir(imdb, net)
 
     cache_file = os.path.join(output_dir, 'detections.pkl')
     if os.path.exists(cache_file):
         with open(cache_file, 'rb') as fid:
             all_boxes = cPickle.load(fid)
-        print "load express_detections"
+        print "load phone_detections"
     else:
         print "not find"
         # timers
@@ -256,5 +257,3 @@ def test_net(net, imdb, output_dir, max_per_image=100, thresh=0.05, vis=False, i
 
     print 'Evaluating detections'
     imdb.evaluate_detections(all_boxes, output_dir, iou_thres=iou_thres)
-
-    return all_boxes

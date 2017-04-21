@@ -1,21 +1,6 @@
-#!/usr/bin/env python
-
-# --------------------------------------------------------
-# Faster R-CNN
-# Copyright (c) 2015 Microsoft
-# Licensed under The MIT License [see LICENSE for details]
-# Written by Ross Girshick
-# --------------------------------------------------------
-
-"""
-Demo script showing detections in sample images.
-
-See README.md for installation instructions before running.
-"""
-
 import _init_paths
 from fast_rcnn.config import cfg
-from fast_rcnn.test_gallery import im_detect
+from fast_rcnn.test import im_detect
 from fast_rcnn.nms_wrapper import nms
 from utils.timer import Timer
 import matplotlib.pyplot as plt
@@ -23,57 +8,80 @@ import numpy as np
 import scipy.io as sio
 import caffe, os, sys, cv2
 import argparse
-import cPickle
 
-def demo(net, image_name):
-    """Detect object classes in an image using pre-computed object proposals."""
 
-    # Load the demo image
-    im = cv2.imread(image_name)
 
-    # Detect all object classes and regress object bounds
-    timer = Timer()
-    timer.tic()
-    scores, boxes = im_detect(net, im, 'norm', None)
-    timer.toc()
-    print ('Detection took {:.3f}s for '
-           '{:d} object proposals').format(timer.total_time, boxes.shape[0])
+def vis_detections(im, dets, thresh=0.5):
+    """Draw detected bounding boxes."""
+    inds = np.where(dets[:, -1] >= thresh)[0]
+    if len(inds) == 0:
+        return
 
-    thresh = 0.05
-    inds = np.where(scores[:, 1] > thresh)[0]
-    cls_scores = scores[inds, 1]
-    cls_boxes = boxes[inds, 4:8]
-    cls_dets = np.hstack((cls_boxes, cls_scores[:, np.newaxis])) \
-        .astype(np.float32, copy=False)
-    keep = nms(cls_dets, cfg.TEST.NMS)
-    cls_dets = cls_dets[keep, :]
-    # features = features[keep, :]
-    return cls_dets
+    im = im[:, :, (2, 1, 0)]
+    fig, ax = plt.subplots(figsize=(12, 12))
+    ax.imshow(im, aspect='equal')
+    for i in inds:
+        bbox = dets[i, :4]
+        score = dets[i, -1]
+
+        ax.add_patch(
+            plt.Rectangle((bbox[0], bbox[1]),
+                          bbox[2] - bbox[0],
+                          bbox[3] - bbox[1], fill=False,
+                          edgecolor='red', linewidth=3.5)
+            )
+        ax.text(bbox[0], bbox[1] - 2,
+                '{:.3f}'.format(score),
+                bbox=dict(facecolor='blue', alpha=0.5),
+                fontsize=14, color='white')
+
+    plt.axis('off')
+    plt.tight_layout()
+    plt.draw()
+
 
 if __name__ == '__main__':
-    cfg.TEST.HAS_RPN = True  # Use RPN for proposals
+    cfg.TEST.HAS_RPN = True
+    cfg.TRAIN.MAX_SIZE = 1300
+    cfg.TRAIN.SCALES = (700, )
 
+    prototxt = '/home/sy/code/re_id/express/models/express/VGG16/test.prototxt'
+    caffemodel = '/home/sy/code/re_id/express/output/out/express_iter_25000.caffemodel'
+    if not os.path.isfile(caffemodel):
+        raise IOError(('{:s} not found.').format(caffemodel))
     caffe.set_mode_gpu()
     caffe.set_device(0)
-    gallery_def = '/home/sy/code/py-faster-rcnn/models/psdb_2/VGG16/test.prototxt'
-    caffemodel = '/home/sy/code/py-faster-rcnn/output/psdb_pretrain/VGG16_iter_30000.caffemodel'
-
-    if not os.path.isfile(caffemodel):
-        raise IOError(('{:s} not found.\nDid you run ./data/script/'
-                       'fetch_faster_rcnn_models.sh?').format(caffemodel))
-
+    net_rcnn = caffe.Net(prototxt, caffemodel, caffe.TEST)
     print '\n\nLoaded network {:s}'.format(caffemodel)
-    net = caffe.Net(gallery_def, caffemodel, caffe.TEST)
 
-    path = '/home/sy/code/py-faster-rcnn/demo/'
-    # im_names = ['s15535.jpg', 's15536.jpg', 's15537.jpg',
-    #             's15538.jpg', 's15539.jpg']
-    im_names = ['s15538.jpg']
+    prototxt = '/home/sy/code/re_id/express/models/phone/VGG16/test.prototxt'
+    caffemodel = '/home/sy/code/re_id/express/output/out/express_iter_25000.caffemodel'
+    if not os.path.isfile(caffemodel):
+        raise IOError(('{:s} not found.').format(caffemodel))
+    caffe.set_mode_gpu()
+    caffe.set_device(0)
+    net_phone = caffe.Net(prototxt, caffemodel, caffe.TEST)
+    print '\n\nLoaded network {:s}'.format(caffemodel)
+
+    path = '/home/sy/code/re_id/express/demo'
+    im_names = ['000456.jpg', '000542.jpg', '001150.jpg',
+                '001763.jpg', '004545.jpg']
+
     for im_name in im_names:
-        det = demo(net, path + im_name)
-        cache_file = '/home/sy/code/py-faster-rcnn/demo/det.pkl'
-        with open(cache_file, 'wb') as fid:
-            cPickle.dump(det, fid, cPickle.HIGHEST_PROTOCOL)
-        # cache_file = '/home/sy/code/py-faster-rcnn/demo/feat.pkl'
-        # with open(cache_file, 'wb') as fid:
-        #     cPickle.dump(feat, fid, cPickle.HIGHEST_PROTOCOL)
+        im = cv2.imread(path + im_name)
+        scores, boxes = im_detect(net_rcnn, im)
+
+        inds = np.where(scores[:, 1] > thresh)[0]
+        cls_scores = scores[inds, 1]
+        cls_boxes = boxes[inds, 4:]
+        cls_dets = np.hstack((cls_boxes, cls_scores[:, np.newaxis])) \
+            .astype(np.float32, copy=False)
+        keep = nms(cls_dets, cfg.TEST.NMS)
+        cls_dets = cls_dets[keep, :]
+        if vis:
+            vis_detections(im, cls_dets)
+            plt.show()
+
+        # cls_dets phone det
+
+    

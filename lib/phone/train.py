@@ -9,7 +9,6 @@
 
 import caffe
 from fast_rcnn.config import cfg
-import roi_data_layer.roidb as rdl_roidb
 from utils.timer import Timer
 import numpy as np
 import os
@@ -17,6 +16,7 @@ import os
 from caffe.proto import caffe_pb2
 import google.protobuf as pb2
 import google.protobuf.text_format
+from tensorboard_logger import configure, log_value
 
 class SolverWrapper(object):
     """A simple wrapper around Caffe's solver.
@@ -27,18 +27,6 @@ class SolverWrapper(object):
     def __init__(self, solver_prototxt, roidb, output_dir, pretrained_model=None):
         """Initialize the SolverWrapper."""
         self.output_dir = output_dir
-
-        if (cfg.TRAIN.HAS_RPN and cfg.TRAIN.BBOX_REG and
-            cfg.TRAIN.BBOX_NORMALIZE_TARGETS):
-            # RPN can only use precomputed normalization because there are no
-            # fixed statistics to compute a priori
-            assert cfg.TRAIN.BBOX_NORMALIZE_TARGETS_PRECOMPUTED
-
-        if cfg.TRAIN.BBOX_REG:
-            print 'Computing bounding-box regression targets...'
-            self.bbox_means, self.bbox_stds = \
-                    rdl_roidb.add_bbox_regression_targets(roidb)
-            print 'done'
 
         self.solver = caffe.SGDSolver(solver_prototxt)
         if pretrained_model is not None:
@@ -58,23 +46,6 @@ class SolverWrapper(object):
         """
         net = self.solver.net
 
-        scale_bbox_params = (cfg.TRAIN.BBOX_REG and
-                             cfg.TRAIN.BBOX_NORMALIZE_TARGETS and
-                             net.params.has_key('bbox_pred'))
-
-        if scale_bbox_params:
-            # save original values
-            orig_0 = net.params['bbox_pred'][0].data.copy()
-            orig_1 = net.params['bbox_pred'][1].data.copy()
-
-            # scale and shift with bbox reg unnormalization; then save snapshot
-            net.params['bbox_pred'][0].data[...] = \
-                    (net.params['bbox_pred'][0].data *
-                     self.bbox_stds[:, np.newaxis])
-            net.params['bbox_pred'][1].data[...] = \
-                    (net.params['bbox_pred'][1].data *
-                     self.bbox_stds + self.bbox_means)
-
         infix = ('_' + cfg.TRAIN.SNAPSHOT_INFIX
                  if cfg.TRAIN.SNAPSHOT_INFIX != '' else '')
         filename = (self.solver_param.snapshot_prefix + infix +
@@ -83,11 +54,7 @@ class SolverWrapper(object):
 
         net.save(str(filename))
         print 'Wrote snapshot to: {:s}'.format(filename)
-
-        if scale_bbox_params:
-            # restore net to original state
-            net.params['bbox_pred'][0].data[...] = orig_0
-            net.params['bbox_pred'][1].data[...] = orig_1
+        
         return filename
 
     def train_model(self, max_iters):
@@ -100,6 +67,35 @@ class SolverWrapper(object):
             timer.tic()
             self.solver.step(1)
             timer.toc()
+
+            loss_all =  self.solver.net.blobs['loss0'].data.copy() + \
+                        self.solver.net.blobs['loss1'].data.copy() + \
+                        self.solver.net.blobs['loss2'].data.copy() + \
+                        self.solver.net.blobs['loss3'].data.copy() + \
+                        self.solver.net.blobs['loss4'].data.copy() + \
+                        self.solver.net.blobs['loss5'].data.copy() + \
+                        self.solver.net.blobs['loss6'].data.copy() + \
+                        self.solver.net.blobs['loss7'].data.copy() + \
+                        self.solver.net.blobs['loss8'].data.copy() + \
+                        self.solver.net.blobs['loss9'].data.copy() + \
+                        self.solver.net.blobs['loss10'].data.copy() + \
+                        self.solver.net.blobs['loss11'].data.copy() + \
+                        self.solver.net.blobs['loss_length'].data.copy()
+            log_value('loss1', self.solver.net.blobs['loss0'].data.copy(), self.solver.iter)
+            log_value('loss2', self.solver.net.blobs['loss1'].data.copy(), self.solver.iter)
+            log_value('loss3', self.solver.net.blobs['loss2'].data.copy(), self.solver.iter)
+            log_value('loss4', self.solver.net.blobs['loss3'].data.copy(), self.solver.iter)
+            log_value('loss5', self.solver.net.blobs['loss4'].data.copy(), self.solver.iter)
+            log_value('loss6', self.solver.net.blobs['loss5'].data.copy(), self.solver.iter)
+            log_value('loss7', self.solver.net.blobs['loss6'].data.copy(), self.solver.iter)
+            log_value('loss8', self.solver.net.blobs['loss7'].data.copy(), self.solver.iter)
+            log_value('loss9', self.solver.net.blobs['loss8'].data.copy(), self.solver.iter)
+            log_value('loss10', self.solver.net.blobs['loss9'].data.copy(), self.solver.iter)
+            log_value('loss11', self.solver.net.blobs['loss10'].data.copy(), self.solver.iter)
+            log_value('loss12', self.solver.net.blobs['loss11'].data.copy(), self.solver.iter)
+            log_value('loss_length', self.solver.net.blobs['loss_length'].data.copy(), self.solver.iter)
+            log_value('loss_all', loss_all, self.solver.iter)
+
             if self.solver.iter % (10 * self.solver_param.display) == 0:    #200
                 print 'speed: {:.3f}s / iter'.format(timer.average_time)
 
@@ -111,52 +107,29 @@ class SolverWrapper(object):
             model_paths.append(self.snapshot())
         return model_paths
 
+def prepare_roidb(imdb):
+    roidb = imdb.roidb
+    for i in xrange(len(imdb.image_index)):
+        roidb[i]['image'] = imdb.image_path_at(i)
+        
+
 def get_training_roidb(imdb):
     """Returns a roidb (Region of Interest database) for use in training."""
     if cfg.TRAIN.USE_FLIPPED:   #true
         print 'prepare'
         imdb.roidb
-        print 'Appending horizontally-flipped training examples...'
-        imdb.append_flipped_images()
+        # print 'Appending horizontally-flipped training examples...'
+        # imdb.append_flipped_images()
         print 'done'
 
     print 'Preparing training data...'
-    rdl_roidb.prepare_roidb(imdb)
+    prepare_roidb(imdb)
     print 'done'
 
-    return imdb.roidb   # precompute max_ocerlap, max_class...
-                        # [{box, gt_class, overlaps, flipped, seg_areas, image, height, width
-                        # max_class, max_overlap}, {}, ...]
+    return imdb.roidb
 
-def filter_roidb(roidb):
-    """Remove roidb entries that have no usable RoIs."""
+def train_net(solver_prototxt, roidb, output_dir, pretrained_model=None, max_iters=40000):
 
-    def is_valid(entry):
-        # Valid images have:
-        #   (1) At least one foreground RoI OR
-        #   (2) At least one background RoI
-        overlaps = entry['max_overlaps']
-        # find boxes with sufficient overlap
-        fg_inds = np.where(overlaps >= cfg.TRAIN.FG_THRESH)[0]
-        # Select background RoIs as those within [BG_THRESH_LO, BG_THRESH_HI)
-        bg_inds = np.where((overlaps < cfg.TRAIN.BG_THRESH_HI) &
-                           (overlaps >= cfg.TRAIN.BG_THRESH_LO))[0]
-        # image is only valid if such boxes exist
-        valid = len(fg_inds) > 0 or len(bg_inds) > 0
-        return valid
-
-    num = len(roidb)
-    filtered_roidb = [entry for entry in roidb if is_valid(entry)]
-    num_after = len(filtered_roidb)
-    print 'Filtered {} roidb entries: {} -> {}'.format(num - num_after,
-                                                       num, num_after)
-    return filtered_roidb
-
-def train_net(solver_prototxt, roidb, output_dir,
-              pretrained_model=None, max_iters=40000):
-    """Train a Fast R-CNN network."""
-
-    roidb = filter_roidb(roidb)
     sw = SolverWrapper(solver_prototxt, roidb, output_dir,
                        pretrained_model=pretrained_model)
 

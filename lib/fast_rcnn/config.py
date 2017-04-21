@@ -1,25 +1,6 @@
-# --------------------------------------------------------
-# Fast R-CNN
-# Copyright (c) 2015 Microsoft
-# Licensed under The MIT License [see LICENSE for details]
-# Written by Ross Girshick
-# --------------------------------------------------------
-
-"""Fast R-CNN config system.
-
-This file specifies default config options for Fast R-CNN. You should not
-change values in this file. Instead, you should write a config file (in yaml)
-and use cfg_from_file(yaml_file) to load it and override the default options.
-
-Most tools in $ROOT/tools take a --cfg option to specify an override file.
-    - See tools/{train,test}_net.py for example code that uses cfg_from_file()
-    - See experiments/cfgs/*.yml for example YAML config override files
-"""
-
 import os
 import os.path as osp
 import numpy as np
-# `pip install easydict` if you don't have it
 from easydict import EasyDict as edict
 
 __C = edict()
@@ -32,6 +13,18 @@ cfg = __C
 #
 
 __C.TRAIN = edict()
+
+# phone
+__C.TRAIN.WIDTH = 480
+__C.TRAIN.HEIGHT = 96
+__C.TRAIN.SOLVER = 'Momentum'
+__C.TRAIN.WEIGHT_DECAY = 0.0005
+__C.TRAIN.LEARNING_RATE = 0.001
+__C.TRAIN.MOMENTUM = 0.9
+__C.TRAIN.GAMMA = 0.1
+__C.TRAIN.STEPSIZE = 50000
+__C.TRAIN.DISPLAY = 20
+__C.TRAIN.LOG_IMAGE_ITERS = 100
 
 __C.TRAIN.LAYER_ID_NUM = 1
 __C.TRAIN.LAYER_SAMPLE_NUM = 1
@@ -133,6 +126,10 @@ __C.TRAIN.RPN_POSITIVE_WEIGHT = -1.0
 
 __C.TEST = edict()
 
+__C.TEST.WIDTH = 480
+__C.TEST.HEIGHT = 96
+__C.TEST.CERTAIN = False
+
 # Scales to use during testing (can list multiple scales)
 # Each scale is the pixel size of an image's shortest side
 __C.TEST.SCALES = (600,)
@@ -203,6 +200,7 @@ __C.MATLAB = 'matlab'
 
 # Place outputs under an experiments directory
 __C.EXP_DIR = 'default'
+__C.LOG_DIR = 'default'
 
 # Use GPU implementation of non-maximum suppression
 __C.USE_GPU_NMS = True
@@ -211,19 +209,31 @@ __C.USE_GPU_NMS = True
 __C.GPU_ID = 0
 
 
-def get_output_dir(imdb, net=None):
+def get_output_dir(imdb, weights_filename):
     """Return the directory where experimental artifacts are placed.
     If the directory does not exist, it is created.
 
     A canonical path is built using the name from an imdb and a network
     (if not None).
     """
-    outdir = osp.abspath(osp.join(__C.ROOT_DIR, 'output', __C.EXP_DIR, imdb.name))
-    if net is not None:
-        outdir = osp.join(outdir, net.name)
+    outdir = osp.abspath(osp.join(__C.ROOT_DIR, 'output', imdb.name))
+    if weights_filename is not None:
+        outdir = osp.join(outdir, weights_filename)
     if not os.path.exists(outdir):
         os.makedirs(outdir)
     return outdir
+
+def get_log_dir(imdb):
+    """Return the directory where experimental artifacts are placed.
+    If the directory does not exist, it is created.
+    A canonical path is built using the name from an imdb and a network
+    (if not None).
+    """
+    log_dir = osp.abspath( \
+        osp.join(__C.ROOT_DIR, 'logs', __C.LOG_DIR, imdb.name, strftime("%Y-%m-%d-%H-%M-%S", localtime())))
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+    return log_dir
 
 def _merge_a_into_b(a, b):
     """Merge config dictionary a into config dictionary b, clobbering the

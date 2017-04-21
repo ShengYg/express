@@ -119,20 +119,10 @@ if __name__ == '__main__':
     print '{:d} roidb entries'.format(len(roidb))
     print len(imdb._image_index)
 
-    # triplet_network
-    pid_and_index = []
-    if args.imdb_name == 'psdb_train':
-        print 'Get training list, num_image is {}'.format(len(imdb._image_index))
-        pid_and_index = imdb.get_input_list()
-        print 'Get training list, len is {}'.format(len(pid_and_index))
-
 
     output_dir = get_output_dir(imdb)
     print 'Output will be saved to `{:s}`'.format(output_dir)
 
-    train_net(args.solver, roidb, pid_and_index, output_dir,
+    train_net(args.solver, roidb, output_dir,
               pretrained_model=args.pretrained_model,
               max_iters=args.max_iters)
-    # train_net(args.solver, roidb, output_dir,
-    #           pretrained_model=args.pretrained_model,
-    #           max_iters=args.max_iters)
