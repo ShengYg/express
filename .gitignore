@@ -67,3 +67,7 @@
 
 *.log
 *.pyx
+experiments/logs/
+data/
+output/
+runs/
