@@ -6,6 +6,10 @@ from datasets.imdb import imdb
 from fast_rcnn.config import cfg
 import cPickle
 
+# weights = np.array([[1, 1, 1.2, 1.6, 1.8, 1.8, 1.5, 1.3 , 1, 1.7]])
+# weights = np.vstack((np.ones((5, 10)), weights, np.ones((6, 10))))
+weights = np.ones((12, 10))
+
 def _compute_iou(a, b):
     x1 = max(a[0], b[0])
     y1 = max(a[1], b[1])
@@ -14,6 +18,9 @@ def _compute_iou(a, b):
     inter = max(0, x2 - x1) * max(0, y2 - y1)
     union = (a[2] - a[0]) * (a[3] - a[1]) + (b[2] - b[0]) * (b[3] - b[1]) - inter
     return inter * 1.0 / union
+
+def safe_log(x, minval=10e-40):
+    return np.log(x.clip(min=minval))
 
 class phone(imdb):
     def __init__(self, image_set, root_dir=None, ratio=0.8):
@@ -100,6 +107,64 @@ class phone(imdb):
         return os.path.join(cfg.DATA_DIR, 'express', 'pretrain_db_benchmark')
 
     def evaluate_detections(self, all_boxes, output_dir):
+        def get_labels_rescaling(det, length):
+            label = []
+            score = []
+            for i in range(length):
+                arr = safe_log(det[i][0])
+                max_score = arr[0]
+                max_ind = 0
+                for j in range(1, arr.shape[0] - 1): # ignore label 10
+                    if max_score * weights[i][j] < arr[j] * weights[i][max_ind]:
+                        max_score = arr[j]
+                        max_ind = j
+                label.append(max_ind)
+                score.append(max_score)
+            return label, score
+        
+        def get_labels_rescaling_2(det, length):
+            label = []
+            score = []
+            for i in range(length):
+                arr = safe_log(det[i][0])
+                if arr[0] * weights[i][1] > arr[1] * weights[i][0]:
+                    large_ind, small_ind = 0, 1
+                    large, small = arr[0], arr[1]
+                else:
+                    large_ind, small_ind = 1, 0
+                    large, small = arr[1], arr[0]
+                for j in range(2, arr.shape[0] - 1): # ignore label 10
+                    if arr[j] * weights[i][large_ind] > large * weights[i][j]:
+                        small = large
+                        large = arr[j]
+                        small_ind = large_ind
+                        large_ind = j
+                    elif arr[j] * weights[i][small_ind] > small * weights[i][j]:
+                        small = arr[j]
+                        small_ind = j
+                    else:
+                        continue
+                label.append([large_ind, small_ind])
+                score.append([large, small])
+            return label, score
+        
+        def get_possible_phone(arr):
+            def bp(result, k):
+                out = []
+                for label in result:
+                    for i in k:
+                        out.append(label+[i])
+                return out
+            result = [[]]
+            for k in arr:
+                result = bp(result, k)
+            return result
+
+        def if_phone_right(list_a, arr_b):
+            for a in list_a:
+                if (np.array(a) == arr_b).all():
+                    return a
+            return False
 
         gt_roidb = self.gt_roidb()
         assert len(all_boxes) == len(gt_roidb)
@@ -114,64 +179,12 @@ class phone(imdb):
         test_image_num = 0
         for gt, det in zip(gt_roidb, all_boxes):
             gt_labels = gt['labels']
-            det_probs = [np.log(np.max(score)) for score in det]
-            det_labels = [np.argmax(score) for score in det]
-            det[-1][0] = np.where(det[-1][0] <= 10 ** -44, 10 ** -44, det[-1][0])
-            det_length = np.log(det[-1][0])
-            phone_score = []
-            prob_sum = sum([det_probs[i] for i in range(4)])
-            for i in range(8):
-                prob_sum += det_probs[i+4]
-                phone_score.append(prob_sum + det_length[i])
-            # prob_sum = 0
-            # for i in range(12):
-            #     prob_sum += det_probs[i]
-            #     phone_score.append(prob_sum + det_length[i])
-            phone_length = np.argmax(phone_score) + 5
-
-            def big_2(arr):
-                large_ind, small_ind, large, small = 0, 0, 0, 0
-                if arr[0] > arr[1]:
-                    large_ind, small_ind = 0, 1
-                    large, small = arr[0], arr[1]
-                else:
-                    large_ind, small_ind = 1, 0
-                    large, small = arr[1], arr[0]
-                for i in range(2, arr.shape[0]):
-                    if arr[i] > large:
-                        small = large
-                        large = arr[i]
-                        small_ind = large_ind
-                        large_ind = i
-                    elif arr[i] <= large and arr[i] >= small:
-                        small = arr[i]
-                        small_ind = i
-                    else:
-                        continue
-                return [large, small], [large_ind, small_ind]
-            
-            def get_possible_phone(arr):
-                def bp(result, k):
-                    out = []
-                    for label in result:
-                        for i in k:
-                            out.append(label+[i])
-                    return out
-                result = [[]]
-                for k in arr:
-                    result = bp(result, k)
-                return result
-
-            def if_phone_right(list_a, arr_b):
-                for a in list_a:
-                    if (np.array(a) == arr_b).all():
-                        return a
-                return False
+            phone_length = np.argmax(det[-1]) + 5
 
             if cfg.TEST.CERTAIN:
-                det_probs_2 = [big_2(score[0])[0] for score in det][:phone_length]
-                det_labels_2 = [big_2(score[0])[1] for score in det][:phone_length]
-                det_labels_2_rectify = [[det_labels_2[i][0]] if det_probs_2[i][0] > 0.98 else det_labels_2[i] for i in range(len(det_probs_2))]
+                det_probs_2 = get_labels_rescaling_2(det, phone_length)[1]
+                det_labels_2 = get_labels_rescaling_2(det, phone_length)[0]
+                det_labels_2_rectify = [[det_labels_2[i][0]] if det_probs_2[i][0] > np.log(0.98) else det_labels_2[i] for i in range(len(det_probs_2))]
 
                 res = get_possible_phone(det_labels_2_rectify)
                 res = [labels[:phone_length] for labels in res]
@@ -197,9 +210,10 @@ class phone(imdb):
                     phone_right += 1
                     phone_right_list.append(test_image_num)
             else:
+                det_labels = get_labels_rescaling(det, phone_length)[0]
                 res = det_labels[:phone_length]
                 res_all.append(res)
-                # test if len(res) == gt_labels.shape[0]
+                
                 if len(res) == gt_labels.shape[0]:
                     extra_num += 1
                     if (np.array(res) == gt_labels).all():
