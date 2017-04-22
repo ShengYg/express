@@ -107,39 +107,35 @@ class phone(imdb):
         return os.path.join(cfg.DATA_DIR, 'express', 'pretrain_db_benchmark')
 
     def evaluate_detections(self, all_boxes, output_dir):
+
         def get_labels_rescaling(det, length):
-            label = []
-            score = []
-            for i in range(length):
-                arr = safe_log(det[i][0])
-                max_score = arr[0]
-                max_ind = 0
-                for j in range(1, arr.shape[0] - 1): # ignore label 10
-                    if max_score * weights[i][j] < arr[j] * weights[i][max_ind]:
-                        max_score = arr[j]
-                        max_ind = j
-                label.append(max_ind)
-                score.append(max_score)
+            det = np.vstack((det[:length]))
+            det = safe_log(det[:, :-1])
+            det = det - safe_log(weights[:length])
+            label = list(np.argmax(det, axis=1))
+            score = list(np.argmax(det, axis=1))
             return label, score
-        
+
         def get_labels_rescaling_2(det, length):
+            det = np.vstack((det[:length]))
+            det = safe_log(det[:, :-1])
+            det = det - safe_log(weights[:length])
             label = []
             score = []
-            for i in range(length):
-                arr = safe_log(det[i][0])
-                if arr[0] * weights[i][1] > arr[1] * weights[i][0]:
+            for arr in det:
+                if arr[0] > arr[1]:
                     large_ind, small_ind = 0, 1
                     large, small = arr[0], arr[1]
                 else:
                     large_ind, small_ind = 1, 0
                     large, small = arr[1], arr[0]
-                for j in range(2, arr.shape[0] - 1): # ignore label 10
-                    if arr[j] * weights[i][large_ind] > large * weights[i][j]:
+                for j in range(2, arr.shape[0]):
+                    if arr[j] > large:
                         small = large
                         large = arr[j]
                         small_ind = large_ind
                         large_ind = j
-                    elif arr[j] * weights[i][small_ind] > small * weights[i][j]:
+                    elif arr[j] > small:
                         small = arr[j]
                         small_ind = j
                     else:
@@ -213,7 +209,7 @@ class phone(imdb):
                 det_labels = get_labels_rescaling(det, phone_length)[0]
                 res = det_labels[:phone_length]
                 res_all.append(res)
-                
+
                 if len(res) == gt_labels.shape[0]:
                     extra_num += 1
                     if (np.array(res) == gt_labels).all():
