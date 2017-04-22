@@ -5,10 +5,8 @@ import datasets
 from datasets.imdb import imdb
 from fast_rcnn.config import cfg
 import cPickle
-
-# weights = np.array([[1, 1, 1.2, 1.6, 1.8, 1.8, 1.5, 1.3 , 1, 1.7]])
-# weights = np.vstack((np.ones((5, 10)), weights, np.ones((6, 10))))
-weights = np.ones((12, 10))
+import itertools
+import heapq
 
 def _compute_iou(a, b):
     x1 = max(a[0], b[0])
@@ -106,20 +104,16 @@ class phone(imdb):
     def _get_default_path_benchmark(self):
         return os.path.join(cfg.DATA_DIR, 'express', 'pretrain_db_benchmark')
 
-    def evaluate_detections(self, all_boxes, output_dir):
+    def evaluate_detections(self, all_boxes, output_dir, weights=None):
+        if not weights:
+            weights = np.ones((12, 10))
 
-        def get_labels_rescaling(det, length):
-            det = np.vstack((det[:length]))
-            det = safe_log(det[:, :-1])
-            det = det - safe_log(weights[:length])
+        def get_labels_rescaling(det):
             label = list(np.argmax(det, axis=1))
             score = list(np.argmax(det, axis=1))
             return label, score
 
-        def get_labels_rescaling_2(det, length):
-            det = np.vstack((det[:length]))
-            det = safe_log(det[:, :-1])
-            det = det - safe_log(weights[:length])
+        def get_labels_rescaling_2(det):
             label = []
             score = []
             for arr in det:
@@ -168,7 +162,6 @@ class phone(imdb):
 
         tp, num, tlength, phone_right = 0, 0, 0, 0
         extra_tp, extra_num = 0, 0
-        certain_num = 0
         res_all = []
         phone_right_list = []
         mat = np.zeros((10, 11), dtype=np.int32)
@@ -176,59 +169,53 @@ class phone(imdb):
         for gt, det in zip(gt_roidb, all_boxes):
             gt_labels = gt['labels']
             phone_length = np.argmax(det[-1]) + 5
+            det = np.vstack((det[:phone_length]))
+            det = safe_log(det[:, :-1])
+            det = det - safe_log(weights[:phone_length])
 
-            if cfg.TEST.CERTAIN:
-                det_probs_2 = get_labels_rescaling_2(det, phone_length)[1]
-                det_labels_2 = get_labels_rescaling_2(det, phone_length)[0]
+            res = None
+            if cfg.TEST.CANDIDATE == 'all':
+                def kSmallestPairs(k, *args):
+                    return map(list, heapq.nsmallest(k, itertools.product(*args), key=sum))
+                res = kSmallestPairs(3, *[det[i] for i in range(det.shape[0])])
+                res_all.append(res)
+            elif cfg.TEST.CANDIDATE == 'single':
+                det_probs_2 = get_labels_rescaling_2(det)[1]
+                det_labels_2 = get_labels_rescaling_2(det)[0]
                 det_labels_2_rectify = [[det_labels_2[i][0]] if det_probs_2[i][0] > np.log(0.98) else det_labels_2[i] for i in range(len(det_probs_2))]
 
                 res = get_possible_phone(det_labels_2_rectify)
                 res = [labels[:phone_length] for labels in res]
                 res_all.append(res)
-
-                if len(res[0]) == gt_labels.shape[0]:
-                    extra_num += 1
-                    if if_phone_right(res, gt_labels):
-                        extra_tp += 1
-                if len(res[0]) > gt_labels.shape[0]:
-                    res = [phone[:gt_labels.shape[0]] for phone in res]
-                elif len(res[0]) < gt_labels.shape[0]:
-                    res = [phone + ([10] * (gt_labels.shape[0] - len(phone))) for phone in res]
-                else:
-                    tlength += 1
-                
-                res1 = np.array(res[0])
-                num += gt_labels.shape[0]
-                tp += np.sum((res1 == gt_labels))
-                for i, j in zip(gt_labels, res1):
-                    mat[i][j] += 1
-                if if_phone_right(res, gt_labels):
-                    phone_right += 1
-                    phone_right_list.append(test_image_num)
-            else:
-                det_labels = get_labels_rescaling(det, phone_length)[0]
-                res = det_labels[:phone_length]
+            elif cfg.TEST.CANDIDATE == 'zero':
+                res = [get_labels_rescaling(det)[0]]
                 res_all.append(res)
+            if len(res[0]) == gt_labels.shape[0]:
+                extra_num += 1
+                if if_phone_right(res, gt_labels):
+                    extra_tp += 1
+            if len(res[0]) > gt_labels.shape[0]:
+                res = [phone[:gt_labels.shape[0]] for phone in res]
+            elif len(res[0]) < gt_labels.shape[0]:
+                res = [phone + ([10] * (gt_labels.shape[0] - len(phone))) for phone in res]
+            else:
+                tlength += 1
 
-                if len(res) == gt_labels.shape[0]:
-                    extra_num += 1
-                    if (np.array(res) == gt_labels).all():
-                        extra_tp += 1
-
-                if len(res) > gt_labels.shape[0]:
-                    res = res[:gt_labels.shape[0]]
-                elif len(res) < gt_labels.shape[0]:
-                    res.extend([10] * (gt_labels.shape[0] - len(res)))
-                else:
-                    tlength += 1
-                res = np.array(res)
-                num += gt_labels.shape[0]
-                tp += np.sum((res == gt_labels))
-                for i, j in zip(gt_labels, res):
-                    mat[i][j] += 1
-                if (res == gt_labels).all():
-                    phone_right += 1
-                    phone_right_list.append(test_image_num)
+            if len(res[0]) > gt_labels.shape[0]:
+                res = [phone[:gt_labels.shape[0]] for phone in res]
+            elif len(res[0]) < gt_labels.shape[0]:
+                res = [phone + ([10] * (gt_labels.shape[0] - len(phone))) for phone in res]
+            else:
+                tlength += 1
+            
+            res1 = np.array(res[0])
+            num += gt_labels.shape[0]
+            tp += np.sum((res1 == gt_labels))
+            for i, j in zip(gt_labels, res1):
+                mat[i][j] += 1
+            if if_phone_right(res, gt_labels):
+                phone_right += 1
+                phone_right_list.append(test_image_num)
             test_image_num += 1
 
         cache_file = os.path.join(output_dir, 'digit_mat.pkl')
@@ -240,8 +227,6 @@ class phone(imdb):
         cache_file = os.path.join(output_dir, 'phone_right_list.pkl')
         with open(cache_file, 'wb') as fid:
             cPickle.dump(phone_right_list, fid, cPickle.HIGHEST_PROTOCOL)
-        if cfg.TEST.CERTAIN:
-            print 'certain num:{:.4f}'.format(certain_num)
         print 'right digits: {:.4f}'.format(float(tp) / float(num))
         print 'right length: {:.4f}'.format(float(tlength) / float(len(gt_roidb)))
         print 'right phones: {:.4f}'.format(float(phone_right) / float(len(gt_roidb)))
