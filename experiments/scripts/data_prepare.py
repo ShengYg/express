@@ -230,13 +230,12 @@ if __name__ == '__main__':
                         assert len(phone_label) == phone_box.shape[0], 'pic: {}, lebel: {}, box: {}'.format(num, phone_label, phone_box.shape[0])
                         # phone_label = gt_phone[key]
                         ind = phone_match(phone_label, gt_phone[key])
-                        phone_label = [phone_label[j] if ind[j] else np.array([0]) for j in range(len(phone_label))]
+                        phone_label = [phone_label[j] for j in range(len(phone_label)) if ind[j]]
                         ind_ = [j if ind[j] else -1 for j in range(len(ind))]
                         ind_ = filter(lambda x:x>=0, ind_)
                         phone_box = phone_box[ind_]
                         namelist.append(num + '.jpg')
                         info_all[num + '.jpg'] = [phone_box, phone_label]
-
                         sourcefile = path + num + '.jpg'
                         if not os.path.isfile(sourcefile):
                             raise Exception('No file.jpg')

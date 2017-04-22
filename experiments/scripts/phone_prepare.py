@@ -49,20 +49,18 @@ def main(args):
             if label.shape[0] < 5 or label.shape[0] > 12:
                 continue
             x, y, w, h = box
-            # x, y, w, h = random_crop(x, y, w, h, label.shape[0])
+            x, y, w, h = random_crop(x, y, w, h, label.shape[0])
             cropped = im[y:y+h+1, x:x+w+1, :]
             filename = '{:05d}.jpg'.format(img_num)
-            # if img_num == 9984:
-            #     print box
-            #     print x, y, w, h
             cv2.imwrite(os.path.join(args.output_dir, 'images', filename), cropped)
-            ### preprocess
+
             meta[filename] = label
             name_all.append(filename)
             img_num += 1
         i += 1
         pbar.update(i)
     pbar.finish()
+    print 'image nums: {}'.format(i)
 
     cache_file = os.path.join(args.output_dir, 'namelist.pkl')
     with open(cache_file, 'wb') as fid:
