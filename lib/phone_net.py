@@ -52,7 +52,7 @@ class Bottleneck(nn.Module):
 
 class ResNet(nn.Module):
 
-    def __init__(self, block, layers, num_classes=1000):
+    def __init__(self, block, layers):
         self.inplanes = 64
         super(ResNet, self).__init__()
         self.conv1 = nn.Sequential(Conv2d(3, 64, 3, same_padding=True),
@@ -61,7 +61,8 @@ class ResNet(nn.Module):
         self.layer1 = self._make_layer(block, 64, layers[0])
         self.layer2 = self._make_layer(block, 128, layers[1], stride=2)
         self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
-        self.avgpool = nn.AvgPool2d((15, 3))
+        self.layer4 = self._make_layer(block, 512, layers[3], stride=2)
+        # self.avgpool = nn.AvgPool2d((15, 3))
 
     def _make_layer(self, block, planes, blocks, stride=1):
         downsample = None
@@ -82,13 +83,11 @@ class ResNet(nn.Module):
 
     def forward(self, x):
         x = self.conv1(x)
-
         x = self.layer1(x)
         x = self.layer2(x)
         x = self.layer3(x)
-
-        x = self.avgpool(x)
-
+        x = self.layer4(x)
+        # x = self.avgpool(x)
         return x
         
 
@@ -97,23 +96,27 @@ class VGG16_PHONE(nn.Module):
         super(VGG16_PHONE, self).__init__()
 
         self.conv1 = nn.Sequential(Conv2d(3, 64, 3, same_padding=True, bn=bn),
-                                   Conv2d(64, 64, 3, same_padding=True, bn=bn),
                                    nn.MaxPool2d(2))
         self.conv2 = nn.Sequential(Conv2d(64, 128, 3, same_padding=True, bn=bn),
+                                   Conv2d(128, 128, 3, same_padding=True, bn=bn),
                                    Conv2d(128, 128, 3, same_padding=True, bn=bn),
                                    nn.MaxPool2d(2))
 
         self.conv3 = nn.Sequential(Conv2d(128, 256, 3, same_padding=True, bn=bn),
                                    Conv2d(256, 256, 3, same_padding=True, bn=bn),
                                    Conv2d(256, 256, 3, same_padding=True, bn=bn),
+                                   Conv2d(256, 256, 3, same_padding=True, bn=bn),
                                    nn.MaxPool2d(2))
         self.conv4 = nn.Sequential(Conv2d(256, 512, 3, same_padding=True, bn=bn),
                                    Conv2d(512, 512, 3, same_padding=True, bn=bn),
                                    Conv2d(512, 512, 3, same_padding=True, bn=bn),
+                                   Conv2d(512, 512, 3, same_padding=True, bn=bn),
+                                   Conv2d(512, 512, 3, same_padding=True, bn=bn),
+                                   Conv2d(512, 512, 3, same_padding=True, bn=bn),
                                    nn.MaxPool2d(2))
-        # self.conv5 = nn.Sequential(Conv2d(512, 512, 3, same_padding=True, bn=bn),
-        #                            Conv2d(512, 512, 3, same_padding=True, bn=bn),
-        #                            Conv2d(512, 512, 3, same_padding=True, bn=bn))
+        self.conv5 = nn.Sequential(Conv2d(512, 512, 3, same_padding=True, bn=bn),
+                                   Conv2d(512, 512, 3, same_padding=True, bn=bn),
+                                   Conv2d(512, 512, 3, same_padding=True, bn=bn))
 
     def forward(self, im_data):
 
@@ -121,21 +124,8 @@ class VGG16_PHONE(nn.Module):
         x = self.conv2(x)
         x = self.conv3(x)
         x = self.conv4(x)
-        # x = self.conv5(x)
+        x = self.conv5(x)
         return x
-
-    # def load_from_npz(self, params):
-    #     # params = np.load(npz_file)
-    #     own_dict = self.state_dict()
-    #     for name, val in own_dict.items():
-    #         i, j = int(name[4]), int(name[6]) + 1
-    #         ptype = 'weights' if name[-1] == 't' else 'biases'
-    #         key = 'conv{}_{}/{}:0'.format(i, j, ptype)
-    #         param = torch.from_numpy(params[key])
-    #         if ptype == 'weights':
-    #             param = param.permute(3, 2, 0, 1)
-    #         val.copy_(param)
-
 
 class PhoneNet(nn.Module):
     n_classes = 11
@@ -151,7 +141,8 @@ class PhoneNet(nn.Module):
             self.n_classes = len(classes)
         print 'class labels'
         print self.classes
-        self.features = VGG16_PHONE(bn=False)
+        # self.features = VGG16_PHONE(bn=False)
+        self.features = ResNet(Bottleneck, [2,3,5,2])
 
         # self.conv5 = nn.ModuleList([nn.Sequential(Conv2d(512, 1024, 3, same_padding=True),
         #                    Conv2d(1024, 1024, 3, same_padding=True),
@@ -162,7 +153,9 @@ class PhoneNet(nn.Module):
         # self.score_fc = nn.ModuleList([nn.AvgPool2d((3, 15)) for i in range(12)])
         # self.length_fc = nn.AvgPool2d((3, 15))
         # self.fc6 = nn.ModuleList([FC(512 * 15 * 3, 1024) for i in range(13)])
-        self.fc6 = FC(512 * 15 * 3, 1024)
+        # self.fc6 = FC(512 * 15 * 3, 1024)
+        self.fc6 = FC(2048 * 15 * 3, 1024)
+        # self.fc6 = nn.AvgPool2d((3, 15))
         self.score_fc = nn.ModuleList([FC(1024, self.n_classes) for i in range(12)])
         self.length_fc = FC(1024, 8)
 
@@ -197,15 +190,14 @@ class PhoneNet(nn.Module):
         features = self.features(im_data)
         x = features.view(features.size()[0], -1)
         y = self.fc6(x)
+        # y = y.view(y.size()[0], -1)
         y = F.dropout(y, training=self.training)
 
         ignore_weights = torch.from_numpy(np.ones(self.n_classes, dtype=np.float32))
         ignore_weights[10] = 0
 
         for i in range(12):
-            # y = self.fc6[i](x)
             # y = self.conv5[i](features)
-            # y = F.dropout(y, training=self.training)
             self.cls_score[i] = self.score_fc[i](y)
             self.cls_score[i] = self.cls_score[i].view(self.cls_score[i].size()[0], -1)
             if self.training:
@@ -213,9 +205,7 @@ class PhoneNet(nn.Module):
             self.cls_prob[i] = F.softmax(self.cls_score[i])
         
         # cls length
-        # y = self.fc6[12](x)
         # y = self.conv5[12](features)
-        # y = F.dropout(y, training=self.training)
         self.cls_score[12] = self.length_fc(y)
         self.cls_score[12] = self.cls_score[12].view(self.cls_score[12].size()[0], -1)
         if self.training:
