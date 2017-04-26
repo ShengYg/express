@@ -104,10 +104,7 @@ class phone(imdb):
     def _get_default_path_benchmark(self):
         return os.path.join(cfg.DATA_DIR, 'express', 'pretrain_db_benchmark')
 
-    def evaluate_detections(self, all_boxes, output_dir, weights=None):
-        if not weights:
-            weights = np.ones((12, 10))
-
+    def evaluate_detections(self, all_boxes, output_dir, weights=np.ones((12, 10))):
         def get_labels_rescaling(det):
             label = list(np.argmax(det, axis=1))
             score = list(np.argmax(det, axis=1))
@@ -156,6 +153,30 @@ class phone(imdb):
                     return a
             return False
 
+        def merge(a, b, ind_b, index, k):
+            heap = []
+            index_new = [None for i in range(k)]
+            for i in range(k):
+                heapq.heappush(heap, [-(a[i] + b[0]), i, 0])
+            for i in range(k):
+                item = heapq.heappop(heap)
+                index_new[i] = index[item[1]] + [ind_b[item[2]]]
+                a[i] = -item[0]
+                j = item[2]
+                if j+1 < k:
+                    heapq.heappush(heap, [-(a[i]-b[j]+b[j+1]), i, j+1])
+            return index_new
+
+        def klargest_phone(det, k):
+            det_ind = np.argsort(det, axis=1)[:, ::-1]
+            det = np.sort(det, axis=1)[:, ::-1]
+            index = [[det_ind[0][i]] for i in range(k)]
+            for i in range(1, det.shape[0]):
+                index = merge(det[0], det[i], det_ind[i], index, k)
+            return index
+
+        print 'weights:'
+        print weights
         gt_roidb = self.gt_roidb()
         assert len(all_boxes) == len(gt_roidb)
         assert len(all_boxes[1]) == 13
@@ -175,14 +196,12 @@ class phone(imdb):
 
             res = None
             if cfg.TEST.CANDIDATE == 'all':
-                def kSmallestPairs(k, *args):
-                    return map(list, heapq.nsmallest(k, itertools.product(*args), key=sum))
-                res = kSmallestPairs(3, *[det[i] for i in range(det.shape[0])])
+                res = klargest_phone(det, 3)
                 res_all.append(res)
             elif cfg.TEST.CANDIDATE == 'single':
                 det_probs_2 = get_labels_rescaling_2(det)[1]
                 det_labels_2 = get_labels_rescaling_2(det)[0]
-                det_labels_2_rectify = [[det_labels_2[i][0]] if det_probs_2[i][0] > np.log(0.98) else det_labels_2[i] for i in range(len(det_probs_2))]
+                det_labels_2_rectify = [[det_labels_2[i][0]] if det_probs_2[i][0] > np.log(0.9) else det_labels_2[i] for i in range(len(det_probs_2))]
 
                 res = get_possible_phone(det_labels_2_rectify)
                 res = [labels[:phone_length] for labels in res]
@@ -190,16 +209,11 @@ class phone(imdb):
             elif cfg.TEST.CANDIDATE == 'zero':
                 res = [get_labels_rescaling(det)[0]]
                 res_all.append(res)
+
             if len(res[0]) == gt_labels.shape[0]:
                 extra_num += 1
                 if if_phone_right(res, gt_labels):
                     extra_tp += 1
-            if len(res[0]) > gt_labels.shape[0]:
-                res = [phone[:gt_labels.shape[0]] for phone in res]
-            elif len(res[0]) < gt_labels.shape[0]:
-                res = [phone + ([10] * (gt_labels.shape[0] - len(phone))) for phone in res]
-            else:
-                tlength += 1
 
             if len(res[0]) > gt_labels.shape[0]:
                 res = [phone[:gt_labels.shape[0]] for phone in res]
