@@ -11,6 +11,7 @@ __sets = {}
 
 from datasets.express import express
 from datasets.phone import phone
+from datasets.mnist import mnist
 import numpy as np
 
 
@@ -23,6 +24,11 @@ for split in ['train', 'test']:
 for split in ['train', 'test']:
     name = 'phone_{}'.format(split)
     __sets[name] = (lambda split=split, root_dir=None, ratio=0.8: phone(split, root_dir, ratio))
+
+# Set up mnist_<split>
+for split in ['train', 'test']:
+    name = 'mnist_{}'.format(split)
+    __sets[name] = (lambda split=split, root_dir=None, ratio=0.8: mnist(split, root_dir, ratio))
 
 def get_imdb(name, root_dir = None, ratio=0.8):
     """Get an imdb (image database) by name."""
