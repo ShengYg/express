@@ -7,6 +7,7 @@ from fast_rcnn.config import cfg
 import cPickle
 from progressbar import ProgressBar
 import cv2
+import random
 
 def _compute_iou(a, b):
     x1 = max(a[0], b[0])
@@ -37,15 +38,32 @@ class express(imdb):
         self.config = {'rpn_file'    : None}
 
     def _load_namelist(self):
-        namelist_path = os.path.join(self._root_dir, 'namelist_4.pkl')
+        # namelist_path = os.path.join(self._root_dir, 'namelist_phone.pkl')
+        # if os.path.exists(namelist_path):
+        #     with open(namelist_path, 'rb') as fid:
+        #         return cPickle.load(fid)
+        # else:
+        #     raise Exception('No namelist.pkl, init error')
+        namelist1, namelist2, namelist3 = None, None, None
+        namelist_path = os.path.join(self._root_dir, 'namelist_phone.pkl')
         if os.path.exists(namelist_path):
             with open(namelist_path, 'rb') as fid:
-                return cPickle.load(fid)
-        else:
-            raise Exception('No namelist.pkl, init error')
+                namelist1 = cPickle.load(fid)
+        namelist_path = os.path.join(self._root_dir, 'namelist.pkl')
+        if os.path.exists(namelist_path):
+            with open(namelist_path, 'rb') as fid:
+                namelist2 = cPickle.load(fid)
+        namelist1 = namelist1[:int(len(namelist1) * 0.8)]
+        namelist2 = namelist2[:int(len(namelist2) * 0.8)]
+        namelist_path = os.path.join(self._root_dir, 'namelist_all.pkl')
+        if os.path.exists(namelist_path):
+            with open(namelist_path, 'rb') as fid:
+                namelist3 = cPickle.load(fid)
+        namelist = list(set(namelist3) - (set(namelist1) | set(namelist2)))
+        return namelist
 
     def _load_info(self):
-        info_path = os.path.join(self._root_dir, 'info_4.pkl')
+        info_path = os.path.join(self._root_dir, 'info_all.pkl')
         if os.path.exists(info_path):
             with open(info_path, 'rb') as fid:
                 return cPickle.load(fid)
@@ -66,7 +84,7 @@ class express(imdb):
         Load the indexes for the specific subset (train / test).
         For express, the index is just the image file name.
         """
-        train_num = int(len(self._namelist) * 0.8)
+        train_num = int(len(self._namelist) * self._training_ratio)
         if self._image_set == 'train':
             return self._namelist[:train_num]
         elif self._image_set == 'test':
@@ -74,21 +92,10 @@ class express(imdb):
 
     def gt_roidb(self):
         cache_file = os.path.join(self.cache_path, self.name + '_gt_roidb.pkl')
-        # if os.path.exists(cache_file):
-        #     with open(cache_file, 'rb') as fid:
-        #         roidb = cPickle.load(fid)
-        #     print "{} gt roidb loaded from {}".format(self.name, cache_file)
-        #     return roidb
-        
-        # Construct the gt_roidb
         gt_roidb = []
         for index in self.image_index:
             pic_info = self._info[index]
-            # boxes = pic_info[2]
-            # length = pic_info[3]
-            # im_size = pic_info[5]
-            # assert(boxes.shape[0] == length), 'info data error!'
-            boxes = pic_info[0]
+            boxes = np.copy(pic_info[0])
             im_size = pic_info[2]
             label = pic_info[1]
 
@@ -170,14 +177,15 @@ class express(imdb):
         recall *= det_rate
         print 'mAP: {:.4%}'.format(ap)
 
-    def get_detections(self, all_boxes, output_dir, iou_thres=0.5):
+    def get_detections(self, all_boxes, det_phone_dir, iou_thres=0.5):
         # all_boxes[cls][image] = N x 5 (x1, y1, x2, y2, score)
-        cache_file = os.path.join(self._root_dir, 'test_all_db', 'namelist.pkl')
+        # get detections according to gt_boxes
+        cache_file = os.path.join(det_phone_dir, 'namelist.pkl')
         if os.path.exists(cache_file):
             print '###### already get detections'
             pass
         else:
-            outdir = os.path.join(self._root_dir, 'test_all_db', 'images')
+            outdir = os.path.join(det_phone_dir, 'images')
             if not os.path.exists(outdir):
                 os.makedirs(outdir)
             gt_roidb = self.gt_roidb()
@@ -235,10 +243,7 @@ class express(imdb):
                     # x, y, w, h = random_crop(x, y, w, h, label.shape[0])
                     cropped = im[y1:y2+1, x1:x2+1, :]
                     filename = '{:05d}.jpg'.format(img_num)
-                    # if img_num == 9984:
-                    #     print box
-                    #     print x, y, w, h
-                    cv2.imwrite(os.path.join(self._root_dir, 'test_all_db', 'images', filename), cropped)
+                    cv2.imwrite(os.path.join(det_phone_dir, 'images', filename), cropped)
                     ### preprocess
                     meta[filename] = label
                     name_all.append(filename)
@@ -247,11 +252,12 @@ class express(imdb):
                 pbar.update(k)
             pbar.finish()
 
-            cache_file = os.path.join(self._root_dir, 'test_all_db', 'namelist.pkl')
+            random.shuffle(name_all)
+            cache_file = os.path.join(det_phone_dir, 'namelist.pkl')
             with open(cache_file, 'wb') as fid:
                 cPickle.dump(name_all, fid, cPickle.HIGHEST_PROTOCOL)
 
-            cache_file = os.path.join(self._root_dir, 'test_all_db', 'info.pkl')
+            cache_file = os.path.join(det_phone_dir, 'info.pkl')
             with open(cache_file, 'wb') as fid:
                 cPickle.dump(meta, fid, cPickle.HIGHEST_PROTOCOL)
 
