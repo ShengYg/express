@@ -62,28 +62,16 @@ def parse_args():
     args = parser.parse_args()
     return args
 
-def combined_roidb(imdb_names, rpn_file=None):
-    def get_roidb(imdb_name, rpn_file=None):
-        imdb = get_imdb(imdb_name)
-        print 'Loaded dataset {} for training'.format(imdb.name)
-        imdb.set_proposal_method(cfg.TRAIN.PROPOSAL_METHOD)
-        print 'Set proposal method: {:s}'.format(cfg.TRAIN.PROPOSAL_METHOD)
-        if rpn_file is not None:
-            imdb.config['rpn_file'] = rpn_file
-        roidb = get_training_roidb(imdb)
-        return imdb, roidb
 
-    roidbs = [get_roidb(s, rpn_file) for s in imdb_names.split('+')]
-    roidb = roidbs[0][1]
-    imdb = roidbs[0][0]
-    # if len(roidbs) > 1:
-    #     for r in roidbs[1:]:
-    #         roidb.extend(r[1])
-    #     imdb = datasets.imdb.imdb(imdb_names)
-    # else:
-    #     imdb = get_imdb(imdb_names)
+def get_roidb(imdb_name, rpn_file=None):
+    imdb = get_imdb(imdb_name, os.path.join(cfg.DATA_DIR, 'express'), ratio=0.8)
+    print 'Loaded dataset {} for training'.format(imdb.name)
+    imdb.set_proposal_method(cfg.TRAIN.PROPOSAL_METHOD)
+    print 'Set proposal method: {:s}'.format(cfg.TRAIN.PROPOSAL_METHOD)
+    if rpn_file is not None:
+        imdb.config['rpn_file'] = rpn_file
+    roidb = get_training_roidb(imdb)
     return imdb, roidb
-    #roidb:[{roidb1}, {roidb2}, ...]
 
 if __name__ == '__main__':
     args = parse_args()
@@ -115,7 +103,7 @@ if __name__ == '__main__':
         assert os.path.exists(file), \
                'rpn data not found at: {}'.format(file)
 
-    imdb, roidb = combined_roidb(args.imdb_name, rpn_file=file)
+    imdb, roidb = get_roidb(args.imdb_name, rpn_file=file)
     print '{:d} roidb entries'.format(len(roidb))
     print len(imdb._image_index)
 

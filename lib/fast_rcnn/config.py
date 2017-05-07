@@ -126,16 +126,16 @@ __C.TRAIN.RPN_POSITIVE_WEIGHT = -1.0
 
 __C.TEST = edict()
 
-__C.TEST.WIDTH = 480
-__C.TEST.HEIGHT = 96
-__C.TEST.CERTAIN = False
+__C.TEST.WIDTH = 240
+__C.TEST.HEIGHT = 48
+__C.TEST.CANDIDATE = 'zero' # 'zero', 'single', 'all'
 
 # Scales to use during testing (can list multiple scales)
 # Each scale is the pixel size of an image's shortest side
-__C.TEST.SCALES = (600,)
+__C.TEST.SCALES = (700,)
 
 # Max pixel size of the longest side of a scaled input image
-__C.TEST.MAX_SIZE = 1000
+__C.TEST.MAX_SIZE = 1300
 
 # Overlap threshold used for non-maximum suppression (suppress boxes with
 # IoU >= this threshold)
@@ -149,7 +149,7 @@ __C.TEST.SVM = False
 __C.TEST.BBOX_REG = True
 
 # Propose boxes
-__C.TEST.HAS_RPN = False
+__C.TEST.HAS_RPN = True
 
 # Test using these proposals
 __C.TEST.PROPOSAL_METHOD = 'selective_search'
@@ -209,7 +209,7 @@ __C.USE_GPU_NMS = True
 __C.GPU_ID = 0
 
 
-def get_output_dir(imdb, weights_filename):
+def get_output_dir(imdb, net_filename=None):
     """Return the directory where experimental artifacts are placed.
     If the directory does not exist, it is created.
 
@@ -217,8 +217,8 @@ def get_output_dir(imdb, weights_filename):
     (if not None).
     """
     outdir = osp.abspath(osp.join(__C.ROOT_DIR, 'output', imdb.name))
-    if weights_filename is not None:
-        outdir = osp.join(outdir, weights_filename)
+    if net_filename is not None:
+        outdir = osp.join(outdir, net_filename)
     if not os.path.exists(outdir):
         os.makedirs(outdir)
     return outdir

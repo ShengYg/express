@@ -139,10 +139,8 @@ class PhoneNet(nn.Module):
         if classes is not None:
             self.classes = classes
             self.n_classes = len(classes)
-        print 'class labels'
-        print self.classes
-        # self.features = VGG16_PHONE(bn=False)
-        self.features = ResNet(Bottleneck, [2,3,5,2])
+        self.features = VGG16_PHONE(bn=False)
+        # self.features = ResNet(Bottleneck, [2,3,5,2])
 
         # self.conv5 = nn.ModuleList([nn.Sequential(Conv2d(512, 1024, 3, same_padding=True),
         #                    Conv2d(1024, 1024, 3, same_padding=True),
@@ -153,8 +151,8 @@ class PhoneNet(nn.Module):
         # self.score_fc = nn.ModuleList([nn.AvgPool2d((3, 15)) for i in range(12)])
         # self.length_fc = nn.AvgPool2d((3, 15))
         # self.fc6 = nn.ModuleList([FC(512 * 15 * 3, 1024) for i in range(13)])
-        # self.fc6 = FC(512 * 15 * 3, 1024)
-        self.fc6 = FC(2048 * 15 * 3, 1024)
+        self.fc6 = FC(512 * 15 * 3, 1024)
+        # self.fc6 = FC(2048 * 15 * 3, 1024)
         # self.fc6 = nn.AvgPool2d((3, 15))
         self.score_fc = nn.ModuleList([FC(1024, self.n_classes) for i in range(12)])
         self.length_fc = FC(1024, 8)

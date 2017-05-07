@@ -22,11 +22,6 @@ try:
 except ImportError:
     cprint = None
 
-try:
-    from pycrayon import CrayonClient
-except ImportError:
-    CrayonClient = None
-
 
 def log_print(text, color=None, on_color=None, attrs=None):
     if cprint is not None:
@@ -58,8 +53,8 @@ if __name__ == '__main__':
     output_dir = 'output/phone_train'
 
     start_step = 0
-    end_step = 45000
-    lr_decay_steps = {20000, 30000, 40000}
+    end_step = 40000
+    lr_decay_steps = {20000, 30000}
     lr_decay = 1./10
 
     rand_seed = 1024
@@ -84,7 +79,7 @@ if __name__ == '__main__':
 
     # load data
     # imdb = get_imdb(imdb_name)
-    imdb = get_imdb(imdb_name, os.path.join(cfg.DATA_DIR, 'express', 'pretrain_db_benchmark_new'), ratio=0.8)
+    imdb = get_imdb(imdb_name, os.path.join(cfg.DATA_DIR, 'express', 'pretrain_db_benchmark'), ratio=0.8)
     prepare_roidb(imdb)
     roidb = imdb.roidb
     print 'roidb length: {}'.format(len(roidb))
@@ -96,15 +91,13 @@ if __name__ == '__main__':
     network.weights_normal_init(net)
     # network.load_pretrained_npy(net, pretrained_model)
     # model_file = '/media/longc/Data/models/VGGnet_fast_rcnn_iter_70000.h5'
-    # model_file = 'models/saved_model3/faster_rcnn_60000.h5'
-    # network.load_net(model_file, net)
-    # exp_name = 'vgg16_02-19_13-24'
-    # network.weights_normal_init([net.bbox_fc, net.score_fc, net.fc6, net.fc7], dev=0.01)
+    model_file = 'output/mnist_train/mnist_4200.h5'
+    network.load_pretrain_net(model_file, net)
 
     net.cuda()
     net.train()
 
-    params = list(net.parameters())
+    params = list(net.parameters())[8:]
     optimizer = torch.optim.SGD(params, lr=lr, momentum=momentum, weight_decay=weight_decay)
 
     if not os.path.exists(output_dir):
