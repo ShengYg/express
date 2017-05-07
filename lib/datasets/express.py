@@ -261,6 +261,77 @@ class express(imdb):
             with open(cache_file, 'wb') as fid:
                 cPickle.dump(meta, fid, cPickle.HIGHEST_PROTOCOL)
 
+    def get_detections_thres(self, all_boxes, det_phone_dir, thres=0.8, iou_thres=0.5):
+        # all_boxes[cls][image] = N x 5 (x1, y1, x2, y2, score)
+        # get detections according to score_thres
+        cache_file = os.path.join(det_phone_dir, 'namelist.pkl')
+        if os.path.exists(cache_file):
+            print '###### already get detections'
+            pass
+        else:
+            outdir = os.path.join(det_phone_dir, 'images')
+            if not os.path.exists(outdir):
+                os.makedirs(outdir)
+            gt_roidb = self.gt_roidb()
+            print 'gt image nums: {}'.format(len(gt_roidb))
+            assert len(all_boxes) == 2
+            assert len(all_boxes[1]) == len(gt_roidb)
+
+            pbar = ProgressBar(maxval=len(gt_roidb))
+            pbar.start()
+            img_num = 0
+            k = 0
+            meta = {}
+            det_name_list = []
+            name_all = []
+            for gt, det in zip(gt_roidb, all_boxes[1]):
+                det = np.asarray(det)
+                im_width = gt['im_size'][0]
+                im_name = gt['image']
+                im_label = gt['label']
+
+                inds = np.where(det[:, 0] < im_width/2)[0]
+                det = det[inds]
+                inds = np.where(det[:, -1] > thres)[0]
+                det = det[inds]
+
+                num_det = det.shape[0]
+                if num_det == 0:
+                    continue
+
+                # crop images
+                im = cv2.imread(os.path.join(self._data_path, im_name))
+                for box in det:
+                    x1, y1, x2, y2 = box[:4]
+                    x1 = int(x1 - im_width * 0.000)
+                    x2 = int(x2 - im_width * 0.000)
+                    y1 = int(y1)
+                    y2 = int(y2)
+                    if (box[:4] == np.array([0, 0, 0, 0])).all():
+                        continue
+                    # x, y, w, h = random_crop(x, y, w, h, label.shape[0])
+                    cropped = im[y1:y2+1, x1:x2+1, :]
+                    filename = '{:05d}.jpg'.format(img_num)
+                    cv2.imwrite(os.path.join(det_phone_dir, 'images', filename), cropped)
+                    ### preprocess
+                    det_name_list.append(filename)
+                    img_num += 1
+                meta[im_name] = [im_label, det_name_list]
+                name_all.append(im_name)
+                k += 1
+                pbar.update(k)
+            pbar.finish()
+
+            random.shuffle(name_all)
+            cache_file = os.path.join(det_phone_dir, 'namelist.pkl')
+            with open(cache_file, 'wb') as fid:
+                cPickle.dump(name_all, fid, cPickle.HIGHEST_PROTOCOL)
+
+            cache_file = os.path.join(det_phone_dir, 'info.pkl')
+            with open(cache_file, 'wb') as fid:
+                cPickle.dump(meta, fid, cPickle.HIGHEST_PROTOCOL)
+
+
     def get_detection_error(self, all_boxes, iou_thres=0.5):
         # test whether the box is larger or smaller in horizontal
         gt_roidb = self.gt_roidb()
