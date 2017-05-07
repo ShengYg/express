@@ -86,5 +86,8 @@ if __name__ == '__main__':
             phone_length = np.argmax(scores[-1]) + 5
             scores = np.vstack((scores[:phone_length]))
             scores = safe_log(scores[:, :-1])
-            res = [get_labels_rescaling(scores)[0]]
-            print res[0]
+            res = np.argmax(scores, axis=1)
+            score = np.max(scores, axis=1)
+            if np.sum(score) / score.shape[0] < -0.12:
+                continue
+            print res
