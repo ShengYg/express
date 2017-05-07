@@ -190,8 +190,11 @@ if __name__ == '__main__':
                 except ET.ParseError:
                     print 'XML exception, filename: {}'.format(filename)
                     pass
+                except:
+                    print filename
 
-            # # getting label from image and xml
+            # # getting label from image and xml, used for training express
+            # info [phone_box, phone_label, img_size]
                 # phone_box, phone_label = None, None
                 # if boxes:
                 #     go_on = False
@@ -214,7 +217,44 @@ if __name__ == '__main__':
                 #             img_size = img.size
                 #             info_all[num + '.jpg'].append(img_size)
 
-            # getting label from gt_phone
+            # getting label from gt_phone, used for training phone
+            # info_phone [phone_box, phone_label, img_size, num_box]
+                # phone_box, phone_label = None, None
+                # key = num.split('_')[0]
+                # if boxes:
+                #     go_on = False
+                #     for box in boxes:
+                #         box[:, 2] += box[:, 0]
+                #         box[:, 3] += box[:, 1]
+                #     phone_box, phone_label = np.vstack(map(outbox, boxes)), map(get_phonenum, boxes)
+                #     for phone in phone_label:
+                #         if phone.shape[0] > 12:
+                #             go_on = True
+                #     if not go_on:
+                #         assert len(phone_label) == phone_box.shape[0], 'pic: {}, lebel: {}, box: {}'.format(num, phone_label, phone_box.shape[0])
+                #         # phone_label = gt_phone[key]
+                #         ind = phone_match(phone_label, gt_phone[key])
+                #         phone_label = [phone_label[j] for j in range(len(phone_label)) if ind[j]]
+                #         if len(phone_label) <= 0:
+                #             continue
+                #         ind_ = [j if ind[j] else -1 for j in range(len(ind))]
+                #         ind_ = filter(lambda x:x>=0, ind_)
+                #         phone_box = phone_box[ind_]
+                #         num_box = [boxes[j] for j in range(len(boxes)) if ind[j]]
+                #         namelist.append(num + '.jpg')
+                #         assert phone_box.shape[0] == len(phone_label)
+                #         info_all[num + '.jpg'] = [phone_box, phone_label]
+                #         sourcefile = path + num + '.jpg'
+                #         if not os.path.isfile(sourcefile):
+                #             raise Exception('No file.jpg')
+                #         else:
+                #             img = Image.open(sourcefile)
+                #             img_size = img.size
+                #             info_all[num + '.jpg'].append(img_size)
+                #         info_all[num + '.jpg'].append(num_box)
+
+            # getting label from gt_phone, all included ,used for testing all
+            # info_phone [phone_box, phone_label, img_size]
                 phone_box, phone_label = None, None
                 key = num.split('_')[0]
                 if boxes:
@@ -230,10 +270,9 @@ if __name__ == '__main__':
                         assert len(phone_label) == phone_box.shape[0], 'pic: {}, lebel: {}, box: {}'.format(num, phone_label, phone_box.shape[0])
                         # phone_label = gt_phone[key]
                         ind = phone_match(phone_label, gt_phone[key])
-                        phone_label = [phone_label[j] for j in range(len(phone_label)) if ind[j]]
-                        ind_ = [j if ind[j] else -1 for j in range(len(ind))]
-                        ind_ = filter(lambda x:x>=0, ind_)
-                        phone_box = phone_box[ind_]
+                        assert len(ind) > 0
+                        if (np.array(ind) == False).any():
+                            continue
                         namelist.append(num + '.jpg')
                         info_all[num + '.jpg'] = [phone_box, phone_label]
                         sourcefile = path + num + '.jpg'
@@ -244,43 +283,15 @@ if __name__ == '__main__':
                             img_size = img.size
                             info_all[num + '.jpg'].append(img_size)
 
-
             i += 1
             pbar.update(i)
         pbar.finish()
 
-        # info_all: [phone_box, phone_label, img_size]
-        cache_file = '/home/sy/code/re_id/express/data/express/info_4.pkl'
+        # info_all: [phone_box, phone_label, img_size, num_box]
+        cache_file = '/home/sy/code/re_id/express/data/express/info_all.pkl'
         with open(cache_file, 'wb') as fid:
             cPickle.dump(info_all, fid, cPickle.HIGHEST_PROTOCOL)
-        cache_file = '/home/sy/code/re_id/express/data/express/namelist_4.pkl'
+        random.shuffle(namelist)
+        cache_file = '/home/sy/code/re_id/express/data/express/namelist_all.pkl'
         with open(cache_file, 'wb') as fid:
             cPickle.dump(namelist, fid, cPickle.HIGHEST_PROTOCOL)
-
-    # cache_file = '/home/sy/code/re_id/data/express/namelist_4.pkl'
-    # if os.path.exists(cache_file):
-    #     with open(cache_file, 'rb') as fid:
-    #         namelist4 = cPickle.load(fid)
-    # cache_file = '/home/sy/code/re_id/data/express/namelist_2.pkl'
-    # if os.path.exists(cache_file):
-    #     with open(cache_file, 'rb') as fid:
-    #         namelist2 = cPickle.load(fid)
-    # namelist4.extend(namelist2)
-    # random.shuffle(namelist4)
-    # cache_file = '/home/sy/code/re_id/express/data/express/namelist.pkl'
-    # with open(cache_file, 'wb') as fid:
-    #     cPickle.dump(namelist4, fid, cPickle.HIGHEST_PROTOCOL)
-
-    # cache_file = '/home/sy/code/re_id/data/express/info_4.pkl'
-    # if os.path.exists(cache_file):
-    #     with open(cache_file, 'rb') as fid:
-    #         info4 = cPickle.load(fid)
-    # cache_file = '/home/sy/code/re_id/data/express/info_2.pkl'
-    # if os.path.exists(cache_file):
-    #     with open(cache_file, 'rb') as fid:
-    #         info2 = cPickle.load(fid)
-    # for key, value in info2.items():
-    #     info4[key] = [value[2], value[4], value[5]]
-    # cache_file = '/home/sy/code/re_id/express/data/express/info.pkl'
-    # with open(cache_file, 'wb') as fid:
-    #     cPickle.dump(info4, fid, cPickle.HIGHEST_PROTOCOL)
