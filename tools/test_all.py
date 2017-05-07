@@ -56,8 +56,7 @@ if __name__ == '__main__':
     print 'Using config:'
     pprint.pprint(cfg)
 
-    imdb = get_imdb(imdb_name)
-
+    imdb = get_imdb(imdb_name, os.path.join(cfg.DATA_DIR, 'express'), ratio=0)
     output_dir = os.path.join(os.getcwd(), 'output', 'test_all')
     cache_file = os.path.join(output_dir, 'detections.pkl')
     if os.path.exists(cache_file):
@@ -69,9 +68,8 @@ if __name__ == '__main__':
         caffe.set_device(0)
         net = caffe.Net(test_def, caffemodel, caffe.TEST)
         net.name = os.path.splitext(os.path.basename(caffemodel))[0]
-        all_boxes = test_net(net, imdb, output_dir, thresh=0.8, iou_thres=0.8)
+        all_boxes = test_net(net, imdb, output_dir, thresh=0.8, iou_thres=0.5)
     print '###### getting detections'
-    # imdb.evaluate_detections(all_boxes, output_dir, iou_thres=0.5)
     imdb.get_detections(all_boxes, output_dir, iou_thres=0.5)
     # sys.exit(0)
 
@@ -95,7 +93,7 @@ if __name__ == '__main__':
     print 'Using config:'
     pprint.pprint(cfg)
 
-    imdb = get_imdb(imdb_name, os.path.join(cfg.DATA_DIR, 'express', 'test_all_db'), ratio=0)
+    imdb = get_imdb(imdb_name, output_dir, ratio=0)
     
     cache_file = os.path.join(output_dir, 'detection_score.pkl')
     if os.path.exists(cache_file):
@@ -131,6 +129,6 @@ if __name__ == '__main__':
             cPickle.dump(all_boxes, fid, cPickle.HIGHEST_PROTOCOL)
 
     print '###### Evaluating detections'
-    imdb.evaluate_detections(all_boxes, output_dir)
+    imdb.evaluate_detections(all_boxes, output_dir, weights=np.ones((12, 10)))
 
         

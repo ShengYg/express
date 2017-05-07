@@ -81,7 +81,7 @@ if __name__ == '__main__':
     caffe.set_device(args.gpu_id)
 
     # Detect and store re-id features for all the images in the test images pool
-    imdb = get_imdb(args.imdb_name)
+    imdb = get_imdb(args.imdb_name, os.path.join(cfg.DATA_DIR, 'express'), ratio=0.97)
     imdb.competition_mode(args.comp_mode)
 
     net = caffe.Net(args.test_def, args.caffemodel, caffe.TEST)
