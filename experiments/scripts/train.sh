@@ -26,7 +26,7 @@ case $DATASET in
     TRAIN_IMDB="express_train"
     TEST_IMDB="express_test"
     PT_DIR="express"
-    ITERS=150000
+    ITERS=40000
     ;;
   *)
     echo "No dataset given"

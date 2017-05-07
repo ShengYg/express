@@ -107,7 +107,7 @@ class phone(imdb):
     def evaluate_detections(self, all_boxes, output_dir, weights=np.ones((12, 10))):
         def get_labels_rescaling(det):
             label = list(np.argmax(det, axis=1))
-            score = list(np.argmax(det, axis=1))
+            score = list(np.max(det, axis=1))
             return label, score
 
         def get_labels_rescaling_2(det):
@@ -196,15 +196,14 @@ class phone(imdb):
 
             res = None
             if cfg.TEST.CANDIDATE == 'all':
-                res = klargest_phone(det, 3)
+                res = klargest_phone(det, 2)
                 res_all.append(res)
             elif cfg.TEST.CANDIDATE == 'single':
                 det_probs_2 = get_labels_rescaling_2(det)[1]
                 det_labels_2 = get_labels_rescaling_2(det)[0]
-                det_labels_2_rectify = [[det_labels_2[i][0]] if det_probs_2[i][0] > np.log(0.9) else det_labels_2[i] for i in range(len(det_probs_2))]
+                det_labels_2_rectify = [[det_labels_2[i][0]] if det_probs_2[i][0] > np.log(0.98) else det_labels_2[i] for i in range(len(det_probs_2))]
 
                 res = get_possible_phone(det_labels_2_rectify)
-                res = [labels[:phone_length] for labels in res]
                 res_all.append(res)
             elif cfg.TEST.CANDIDATE == 'zero':
                 res = [get_labels_rescaling(det)[0]]
