@@ -13,7 +13,7 @@ def random_crop(x, y, w, h, length):
     h += float(h) / 8
     return max(int(x), 0), max(int(y), 0), int(w), int(h)
 
-def random_crop_for_refining_det(x, y, w, h, length):
+def random_crop_version2(x, y, w, h, length):
     x -= float(w) / length
     y -= float(h) / 16
     w += float(w) / length * 2
@@ -59,12 +59,14 @@ def main(args):
                 if label.shape[0] < 5 or label.shape[0] > 12:
                     continue
                 x, y, w, h = box
-                x1, y1, w1, h1 = random_crop(x, y, w, h, label.shape[0])
+                # x1, y1, w1, h1 = random_crop(x, y, w, h, label.shape[0])
+                x1, y1, w1, h1 = random_crop_version2(x, y, w, h, label.shape[0])
                 cropped = im[y1:y1+h1+1, x1:x1+w1+1, :]
+                bbox = np.array([x-x1, y-y1, w, h])
                 filename = '{}_{}.jpg'.format(im_name[:12], img_num)
                 cv2.imwrite(os.path.join(args.output_dir, 'images', filename), cropped)
 
-                meta[filename] = label
+                meta[filename] = [label, bbox]
                 name_all.append(filename)
                 img_num += 1
             i += 1
@@ -128,4 +130,5 @@ if __name__ == '__main__':
     parser.add_argument('--output_dir', default='data/express/test_db_benchmark')
     parser.add_argument('--prepare', default='phone')
     args = parser.parse_args()
+    random.seed(1024)
     main(args)

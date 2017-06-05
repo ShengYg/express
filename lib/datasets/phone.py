@@ -88,9 +88,11 @@ class phone(imdb):
         # Construct the gt_roidb
         gt_roidb = []
         for index in self.image_index:
-            labels = self._info[index]
+            labels = self._info[index][0]
+            bbox = self._info[index][1]
             gt_roidb.append({
                 'labels': labels,
+                'bbox': bbox,
                 'flipped' : False})
         with open(cache_file, 'wb') as fid:
             cPickle.dump(gt_roidb, fid, cPickle.HIGHEST_PROTOCOL)

@@ -67,7 +67,8 @@ class MultilabelDataLayer(object):
             im = cv2.imread(roidb[i]['image'])
             if roidb[i]['flipped']:
                 im = im[:, ::-1, :]
-            im = self._prep_im_for_blob(im, cfg.PIXEL_MEANS)
+            # im = self._prep_im_for_blob(im, cfg.PIXEL_MEANS)
+            im = self._prep_im_for_blob(im, cfg.PIXEL_MEANS, roidb[i]['bbox'])
             processed_ims.append(im)
 
         # Create a blob to hold the input images
@@ -90,20 +91,32 @@ class MultilabelDataLayer(object):
         blob = blob.transpose(channel_swap)
         return blob
 
-    def _prep_im_for_blob(self, im, pixel_means):
+    def _prep_im_for_blob(self, im, pixel_means, bbox):
         """Mean subtract and scale an image for use in a blob."""
         im = im.astype(np.float32, copy=False)
         im -= pixel_means
         im_shape = im.shape
-        im_scale_x = float(cfg.TRAIN.WIDTH) / float(im_shape[1]) * float(25) / float(24)
-        im_scale_y = float(cfg.TRAIN.HEIGHT) / float(im_shape[0]) * float(9) / float(8)
-        
-        im = cv2.resize(im, None, None, fx=im_scale_x, fy=im_scale_y,
-                        interpolation=cv2.INTER_LINEAR)
-        x = np.random.randint(0, cfg.TRAIN.WIDTH / 24.0 + 1)
-        y = np.random.randint(0, cfg.TRAIN.HEIGHT / 8.0 + 1)
-        crop_img = im[y:y+cfg.TRAIN.HEIGHT, x:x+cfg.TRAIN.WIDTH, :]
 
+        # im_scale_x = float(cfg.TRAIN.WIDTH) / float(im_shape[1]) * float(25) / float(24)
+        # im_scale_y = float(cfg.TRAIN.HEIGHT) / float(im_shape[0]) * float(9) / float(8)
+        # im = cv2.resize(im, None, None, fx=im_scale_x, fy=im_scale_y,
+        #                 interpolation=cv2.INTER_LINEAR)
+        # x = np.random.randint(0, cfg.TRAIN.WIDTH / 24.0 + 1)
+        # y = np.random.randint(0, cfg.TRAIN.HEIGHT / 8.0 + 1)
+        # crop_img = im[y:y+cfg.TRAIN.HEIGHT, x:x+cfg.TRAIN.WIDTH, :]
+
+        # crop version 2
+        x, y, w, h = bbox
+        crop_x = np.random.randint(x)
+        crop_w = np.random.randint(x+w, im_shape[1]) - crop_x
+        crop_y = np.random.randint(y)
+        crop_h = np.random.randint(y+h, im_shape[0]) - crop_y
+        crop_img = im[crop_y:crop_y+crop_h, crop_x:crop_x+crop_w, :]
+
+        im_scale_x = float(cfg.TRAIN.WIDTH) / float(crop_w)
+        im_scale_y = float(cfg.TRAIN.HEIGHT) / float(crop_h)
+        crop_img = cv2.resize(crop_img, None, None, fx=im_scale_x, fy=im_scale_y,
+                        interpolation=cv2.INTER_LINEAR)
         return crop_img
 
     def forward(self):

@@ -307,4 +307,5 @@ if __name__ == '__main__':
     parser.add_argument('--info_path', default='data/express/info_test.pkl')
     parser.add_argument('--namelist_path', default='data/express/namelist_test.pkl')
     args = parser.parse_args()
+    random.seed(1024)
     main(args)
