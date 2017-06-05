@@ -61,17 +61,18 @@ if __name__ == '__main__':
     # imdb = get_imdb(imdb_name)
     imdb = get_imdb(imdb_name, os.path.join(cfg.DATA_DIR, 'express', 'test_db_benchmark'), ratio=0.)
     prepare_roidb(imdb)
+    roidb = imdb.roidb
 
     # loading rescaling weights
-    info = None
-    cache_file = '/home/sy/code/re_id/express/data/express/test_db_benchmark/info.pkl'
-    if os.path.exists(cache_file):
-        with open(cache_file, 'rb') as fid:
-            info = cPickle.load(fid)
-    phones = info.values()
-    phones = np.vstack(map(phone_append, phones))
-    phones = [phones[:, i] for i in range(12)]
-    weights = np.vstack([np.array([Counter(phones[i])[j] for j in range(10)])[:10] for i in range(12)])
+    # info = None
+    # cache_file = '/home/sy/code/re_id/express/data/express/test_db_benchmark/info.pkl'
+    # if os.path.exists(cache_file):
+    #     with open(cache_file, 'rb') as fid:
+    #         info = cPickle.load(fid)
+    # phones = info.values()
+    # phones = np.vstack(map(phone_append, phones))
+    # phones = [phones[:, i] for i in range(12)]
+    # weights = np.vstack([np.array([Counter(phones[i])[j] for j in range(10)])[:10] for i in range(12)])
     weights = np.ones((12, 10))
     
     output_dir = get_output_dir(imdb, model_name)
@@ -99,6 +100,8 @@ if __name__ == '__main__':
 
         for i in range(num_images):
             im = cv2.imread(imdb.image_path_at(i))
+            x, y, w, h = roidb[i]['bbox']
+            im = im[y:y+h, x:x+w, :]
             scores = im_detect(net, im)
             for j in range(13):
                 all_boxes[i][j] = scores[j]
