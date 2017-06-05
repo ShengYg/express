@@ -64,11 +64,11 @@ if __name__ == '__main__':
         caffe.set_device(0)
         net = caffe.Net(test_def, caffemodel, caffe.TEST)
         net.name = os.path.splitext(os.path.basename(caffemodel))[0]
-        all_boxes = test_net(net, imdb, output_dir, thresh=0.8, iou_thres=0.5)
+        all_boxes = test_net(net, imdb, output_dir, thresh=0.1, iou_thres=0.5)
     print '###### getting detections'
     det_phone_according_to_thres = True
     # imdb.get_detections(all_boxes, output_dir, iou_thres=0.5)
-    imdb.get_detections_thres(all_boxes, output_dir, thres=0.8, iou_thres=0.5)
+    imdb.get_detections_thres(all_boxes, output_dir, thres=0.1)
 
     if not det_phone_according_to_thres:
         print '###### starting phone testing'
@@ -158,7 +158,7 @@ if __name__ == '__main__':
                 scores = safe_log(scores[:, :-1])
                 res = np.argmax(scores, axis=1)
                 score = np.max(scores, axis=1)
-                if np.sum(score) / score.shape[0] < -0.12:
+                if np.sum(score) / score.shape[0] < -0.10:
                     continue
                 phone_all[im_name] = res
                 score_all[im_name] = score
@@ -187,4 +187,5 @@ if __name__ == '__main__':
                         phone_tp += 1
                         break
                 phone_num += 1
+        print 'express num: {}'.format(len(namelist))
         print 'phone_acc: {} / {} = {}'.format(phone_tp, phone_num, float(phone_tp)/phone_num)

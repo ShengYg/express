@@ -39,12 +39,12 @@ exec &> >(tee -a "$LOG")
 echo Logging output to "$LOG"
 
 
-# time python tools/train_net.py --gpu ${GPU_ID} \
-#   --solver models/${PT_DIR}/${NET}/solver.prototxt \
-#   --imdb ${TRAIN_IMDB} \
-#   --iters ${ITERS} \
-#   --cfg experiments/cfgs/train.yml \
-#   ${EXTRA_ARGS}
+time python tools/train_net.py --gpu ${GPU_ID} \
+  --solver models/${PT_DIR}/${NET}/solver.prototxt \
+  --imdb ${TRAIN_IMDB} \
+  --iters ${ITERS} \
+  --cfg experiments/cfgs/train.yml \
+  ${EXTRA_ARGS}
 
 # time python tools/train_net.py --gpu ${GPU_ID} \
 #   --solver models/${PT_DIR}/${NET}/solver.prototxt \
@@ -58,10 +58,10 @@ echo Logging output to "$LOG"
 # NET_FINAL=`grep -B 1 "done solving" ${LOG} | grep "Wrote snapshot" | awk '{print $4}'`
 # set -x
 
-NET_FINAL="output/express_train/express_iter_25000.caffemodel"
-time python tools/test_net.py --gpu ${GPU_ID} \
-  --net ${NET_FINAL} \
-  --test_def models/${PT_DIR}/${NET}/test.prototxt \
-  --imdb ${TEST_IMDB} \
-  --cfg experiments/cfgs/train.yml \
-  ${EXTRA_ARGS}
+# NET_FINAL="output/express_train/express_iter_25000.caffemodel"
+# time python tools/test_net.py --gpu ${GPU_ID} \
+#   --net ${NET_FINAL} \
+#   --test_def models/${PT_DIR}/${NET}/test.prototxt \
+#   --imdb ${TEST_IMDB} \
+#   --cfg experiments/cfgs/train.yml \
+#   ${EXTRA_ARGS}

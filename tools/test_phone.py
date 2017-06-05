@@ -59,12 +59,12 @@ if __name__ == '__main__':
     # pprint.pprint(cfg)
 
     # imdb = get_imdb(imdb_name)
-    imdb = get_imdb(imdb_name, os.path.join(cfg.DATA_DIR, 'express', 'pretrain_db_benchmark'), ratio=0.8)
+    imdb = get_imdb(imdb_name, os.path.join(cfg.DATA_DIR, 'express', 'test_db_benchmark'), ratio=0.)
     prepare_roidb(imdb)
 
     # loading rescaling weights
     info = None
-    cache_file = '/home/sy/code/re_id/express/data/express/pretrain_db_benchmark/info.pkl'
+    cache_file = '/home/sy/code/re_id/express/data/express/test_db_benchmark/info.pkl'
     if os.path.exists(cache_file):
         with open(cache_file, 'rb') as fid:
             info = cPickle.load(fid)
