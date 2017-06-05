@@ -13,22 +13,30 @@ def random_crop(x, y, w, h, length):
     h += float(h) / 8
     return max(int(x), 0), max(int(y), 0), int(w), int(h)
 
+def random_crop_for_refining_det(x, y, w, h, length):
+    x -= float(w) / length
+    y -= float(h) / 16
+    w += float(w) / length * 2
+    h += float(h) / 8
+    return max(int(x), 0), max(int(y), 0), int(w), int(h)
+
 def main(args):
     if not os.path.isdir(os.path.join(args.output_dir, 'images')):
         os.makedirs(os.path.join(args.output_dir, 'images'))
 
     meta = {}
+    meta_refining_det= {}
     name_all = []
     path = '/home/sy/code/re_id/express/data/express/'
 
-    namelist_path = path + 'namelist_phone.pkl'
+    namelist_path = path + args.namelist_name
     if os.path.exists(namelist_path):
         with open(namelist_path, 'rb') as fid:
             namelist = cPickle.load(fid)
     else:
         raise Exception('No namelist.pkl, init error')
 
-    info_path = path + 'info_phone.pkl'
+    info_path = path + args.info_name
     if os.path.exists(info_path):
         with open(info_path, 'rb') as fid:
             info = cPickle.load(fid)
@@ -40,20 +48,20 @@ def main(args):
         print 'start preprocessing phone'
         pbar = ProgressBar(maxval=len(namelist))
         pbar.start()
-        img_num = 0
         i = 0
         for im_name in namelist:
             im = cv2.imread(os.path.join(args.root_dir, im_name))
             info_im = info[im_name]
             boxes, labels = info_im[0], info_im[1]
             # boxes, labels = info_im[2], info_im[4]
+            img_num = 0
             for box, label in zip(boxes, labels):
                 if label.shape[0] < 5 or label.shape[0] > 12:
                     continue
                 x, y, w, h = box
-                x, y, w, h = random_crop(x, y, w, h, label.shape[0])
-                cropped = im[y:y+h+1, x:x+w+1, :]
-                filename = '{:05d}.jpg'.format(img_num)
+                x1, y1, w1, h1 = random_crop(x, y, w, h, label.shape[0])
+                cropped = im[y1:y1+h1+1, x1:x1+w1+1, :]
+                filename = '{}_{}.jpg'.format(im_name[:12], img_num)
                 cv2.imwrite(os.path.join(args.output_dir, 'images', filename), cropped)
 
                 meta[filename] = label
@@ -72,6 +80,7 @@ def main(args):
         cache_file = os.path.join(args.output_dir, 'info.pkl')
         with open(cache_file, 'wb') as fid:
             cPickle.dump(meta, fid, cPickle.HIGHEST_PROTOCOL)
+
     elif args.prepare == 'num':
         print 'start preprocessing phone num'
         pbar = ProgressBar(maxval=len(namelist))
@@ -113,8 +122,10 @@ def main(args):
 
 if __name__ == '__main__':
     parser = ArgumentParser()
-    parser.add_argument('--root_dir', default='data/express/dataset')
-    parser.add_argument('--output_dir', default='data/express/pretrain_db_benchmark')
+    parser.add_argument('--root_dir', default='data/express/dataset_test')
+    parser.add_argument('--info_name', default='info_test.pkl')
+    parser.add_argument('--namelist_name', default='namelist_test.pkl')
+    parser.add_argument('--output_dir', default='data/express/test_db_benchmark')
     parser.add_argument('--prepare', default='phone')
     args = parser.parse_args()
     main(args)

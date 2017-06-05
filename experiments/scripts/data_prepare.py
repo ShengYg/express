@@ -3,6 +3,7 @@ import os
 import numpy as np
 import cPickle
 import random
+from argparse import ArgumentParser
 from progressbar import ProgressBar
 import time
 from PIL import Image
@@ -111,21 +112,23 @@ def phone_match(old, new):
             if item1.shape[0] == item2.shape[0] and (item1 == item2).all():
                 match = True
                 break
+            elif item1.shape[0] > item2.shape[0] and (item1[item1.shape[0] - item2.shape[0]:] == item2).all():
+                match = True
+                break
         ret.append(match)
     return ret
 
-if __name__ == '__main__':
+def main(args):
     ResultType = '4'
-    path = '/home/sy/code/re_id/express/data/express/dataset/'
     box_two_thres = 60
     box_height_thres = 30
     info_all = {}
     namelist = []
-    if not os.path.isdir(path):
-        print 'error data dir path {}'.format(path)
-    filelist = sorted(os.listdir(path))
+    if not os.path.isdir(args.dataset_path):
+        print 'error data dir path {}'.format(args.dataset_path)
+    filelist = sorted(os.listdir(args.dataset_path))
     if not filelist:
-        print 'no pic in dir {}'.format(path)
+        print 'no pic in dir {}'.format(args.dataset_path)
 
     cache_file = '/home/sy/code/re_id/data/express/gt.pkl'
     if os.path.exists(cache_file):
@@ -186,7 +189,7 @@ if __name__ == '__main__':
             if suffix == 'xml':
                 boxes = None
                 try:
-                    boxes = get_box_4(path + filename)
+                    boxes = get_box_4(args.dataset_path + filename)
                 except ET.ParseError:
                     print 'XML exception, filename: {}'.format(filename)
                     pass
@@ -244,7 +247,7 @@ if __name__ == '__main__':
                 #         namelist.append(num + '.jpg')
                 #         assert phone_box.shape[0] == len(phone_label)
                 #         info_all[num + '.jpg'] = [phone_box, phone_label]
-                #         sourcefile = path + num + '.jpg'
+                #         sourcefile = args.dataset_path + num + '.jpg'
                 #         if not os.path.isfile(sourcefile):
                 #             raise Exception('No file.jpg')
                 #         else:
@@ -273,9 +276,11 @@ if __name__ == '__main__':
                         assert len(ind) > 0
                         if (np.array(ind) == False).any():
                             continue
+                        if len(ind) != len(gt_phone[key]):
+                            continue
                         namelist.append(num + '.jpg')
                         info_all[num + '.jpg'] = [phone_box, phone_label]
-                        sourcefile = path + num + '.jpg'
+                        sourcefile = args.dataset_path + num + '.jpg'
                         if not os.path.isfile(sourcefile):
                             raise Exception('No file.jpg')
                         else:
@@ -288,10 +293,18 @@ if __name__ == '__main__':
         pbar.finish()
 
         # info_all: [phone_box, phone_label, img_size, num_box]
-        cache_file = '/home/sy/code/re_id/express/data/express/info_all.pkl'
-        with open(cache_file, 'wb') as fid:
+        with open(args.info_path, 'wb') as fid:
             cPickle.dump(info_all, fid, cPickle.HIGHEST_PROTOCOL)
         random.shuffle(namelist)
-        cache_file = '/home/sy/code/re_id/express/data/express/namelist_all.pkl'
-        with open(cache_file, 'wb') as fid:
+        print len(namelist)
+
+        with open(args.namelist_path, 'wb') as fid:
             cPickle.dump(namelist, fid, cPickle.HIGHEST_PROTOCOL)
+
+if __name__ == '__main__':
+    parser = ArgumentParser()
+    parser.add_argument('--dataset_path', default='data/express/dataset_test/')
+    parser.add_argument('--info_path', default='data/express/info_test.pkl')
+    parser.add_argument('--namelist_path', default='data/express/namelist_test.pkl')
+    args = parser.parse_args()
+    main(args)
