@@ -25,7 +25,7 @@ class express(imdb):
         self._training_ratio = ratio
         self._root_dir = self._get_default_path() if root_dir is None \
                          else root_dir
-        self._data_path = os.path.join(self._root_dir, 'dataset')
+        self._data_path = os.path.join(self._root_dir, 'dataset_test')
         self._classes = ('__background__', 'phonenum')
         self._namelist = self._load_namelist()
         self._info = self._load_info()
@@ -38,37 +38,52 @@ class express(imdb):
         self.config = {'rpn_file'    : None}
 
     def _load_namelist(self):
+        namelist_path = os.path.join(self._root_dir, 'namelist_test.pkl')
+        if os.path.exists(namelist_path):
+            with open(namelist_path, 'rb') as fid:
+                return cPickle.load(fid)
+        else:
+            raise Exception('No namelist.pkl, init error')
+
         # namelist_path = os.path.join(self._root_dir, 'namelist_phone.pkl')
         # if os.path.exists(namelist_path):
         #     with open(namelist_path, 'rb') as fid:
         #         return cPickle.load(fid)
         # else:
         #     raise Exception('No namelist.pkl, init error')
-        namelist1, namelist2, namelist3 = None, None, None
-        namelist_path = os.path.join(self._root_dir, 'namelist_phone.pkl')
-        if os.path.exists(namelist_path):
-            with open(namelist_path, 'rb') as fid:
-                namelist1 = cPickle.load(fid)
-        namelist_path = os.path.join(self._root_dir, 'namelist.pkl')
-        if os.path.exists(namelist_path):
-            with open(namelist_path, 'rb') as fid:
-                namelist2 = cPickle.load(fid)
-        namelist1 = namelist1[:int(len(namelist1) * 0.8)]
-        namelist2 = namelist2[:int(len(namelist2) * 0.8)]
-        namelist_path = os.path.join(self._root_dir, 'namelist_all.pkl')
-        if os.path.exists(namelist_path):
-            with open(namelist_path, 'rb') as fid:
-                namelist3 = cPickle.load(fid)
-        namelist = list(set(namelist3) - (set(namelist1) | set(namelist2)))
-        return namelist
+
+        # namelist1, namelist2, namelist3 = None, None, None
+        # namelist_path = os.path.join(self._root_dir, 'namelist_phone.pkl')
+        # if os.path.exists(namelist_path):
+        #     with open(namelist_path, 'rb') as fid:
+        #         namelist1 = cPickle.load(fid)
+        # namelist_path = os.path.join(self._root_dir, 'namelist.pkl')
+        # if os.path.exists(namelist_path):
+        #     with open(namelist_path, 'rb') as fid:
+        #         namelist2 = cPickle.load(fid)
+        # namelist1 = namelist1[:int(len(namelist1) * 0.8)]
+        # namelist2 = namelist2[:int(len(namelist2) * 0.8)]
+        # namelist_path = os.path.join(self._root_dir, 'namelist_all.pkl')
+        # if os.path.exists(namelist_path):
+        #     with open(namelist_path, 'rb') as fid:
+        #         namelist3 = cPickle.load(fid)
+        # namelist = list(set(namelist3) - (set(namelist1) | set(namelist2)))
+        # return namelist
 
     def _load_info(self):
-        info_path = os.path.join(self._root_dir, 'info_all.pkl')
+        info_path = os.path.join(self._root_dir, 'info_test.pkl')
         if os.path.exists(info_path):
             with open(info_path, 'rb') as fid:
                 return cPickle.load(fid)
         else:
             raise Exception('No info.pkl, init error')
+
+        # info_path = os.path.join(self._root_dir, 'info_all.pkl')
+        # if os.path.exists(info_path):
+        #     with open(info_path, 'rb') as fid:
+        #         return cPickle.load(fid)
+        # else:
+        #     raise Exception('No info.pkl, init error')
 
     def image_path_at(self, i):
         return self.image_path_from_index(self._image_index[i])
@@ -261,7 +276,7 @@ class express(imdb):
             with open(cache_file, 'wb') as fid:
                 cPickle.dump(meta, fid, cPickle.HIGHEST_PROTOCOL)
 
-    def get_detections_thres(self, all_boxes, det_phone_dir, thres=0.8, iou_thres=0.5):
+    def get_detections_thres(self, all_boxes, det_phone_dir, thres=0.8):
         # all_boxes[cls][image] = N x 5 (x1, y1, x2, y2, score)
         # get detections according to score_thres
         cache_file = os.path.join(det_phone_dir, 'namelist.pkl')
@@ -279,10 +294,8 @@ class express(imdb):
 
             pbar = ProgressBar(maxval=len(gt_roidb))
             pbar.start()
-            img_num = 0
             k = 0
             meta = {}
-            det_name_list = []
             name_all = []
             for gt, det in zip(gt_roidb, all_boxes[1]):
                 det = np.asarray(det)
@@ -290,10 +303,11 @@ class express(imdb):
                 im_name = gt['image']
                 im_label = gt['label']
 
-                inds = np.where(det[:, 0] < im_width/2)[0]
+                inds = np.where(det[:, 0] < im_width*0.4)[0]
                 det = det[inds]
                 inds = np.where(det[:, -1] > thres)[0]
                 det = det[inds]
+                det = det[:3]
 
                 num_det = det.shape[0]
                 if num_det == 0:
@@ -301,6 +315,8 @@ class express(imdb):
 
                 # crop images
                 im = cv2.imread(os.path.join(self._data_path, im_name))
+                img_num = 0
+                det_name_list = []
                 for box in det:
                     x1, y1, x2, y2 = box[:4]
                     x1 = int(x1 - im_width * 0.000)
@@ -311,7 +327,7 @@ class express(imdb):
                         continue
                     # x, y, w, h = random_crop(x, y, w, h, label.shape[0])
                     cropped = im[y1:y2+1, x1:x2+1, :]
-                    filename = '{:05d}.jpg'.format(img_num)
+                    filename = im_name.split('_')[0] + '_{}.jpg'.format(img_num)
                     cv2.imwrite(os.path.join(det_phone_dir, 'images', filename), cropped)
                     ### preprocess
                     det_name_list.append(filename)
@@ -322,7 +338,8 @@ class express(imdb):
                 pbar.update(k)
             pbar.finish()
 
-            random.shuffle(name_all)
+            # random.shuffle(name_all)
+            name_all = sorted(name_all)
             cache_file = os.path.join(det_phone_dir, 'namelist.pkl')
             with open(cache_file, 'wb') as fid:
                 cPickle.dump(name_all, fid, cPickle.HIGHEST_PROTOCOL)

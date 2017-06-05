@@ -112,6 +112,8 @@ class AnchorTargetLayer(caffe.Layer):
         K = shifts.shape[0]     # w*h
         all_anchors = (self._anchors.reshape((1, A, 4)) +
                        shifts.reshape((1, K, 4)).transpose((1, 0, 2))) 
+        print self._anchors
+        print all_anchors
         all_anchors = all_anchors.reshape((K * A, 4))
         total_anchors = int(K * A)
 
@@ -152,6 +154,7 @@ class AnchorTargetLayer(caffe.Layer):
             overlaps = bbox_overlaps(
                 np.ascontiguousarray(anchors, dtype=np.float),
                 np.ascontiguousarray(curr_gt_boxes, dtype=np.float))     # anchor_num * gt_num
+            
             argmax_overlaps = overlaps.argmax(axis=1)
             max_overlaps = overlaps[np.arange(len(inds_inside)), argmax_overlaps]   # anchor_num * 1
             gt_argmax_overlaps = overlaps.argmax(axis=0)

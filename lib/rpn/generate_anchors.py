@@ -73,6 +73,15 @@ def generate_anchors_express(base_size=24, ratios=[0.25, 0.39, 0.62],
                          for i in xrange(ratio_anchors.shape[0])]).astype(np.int32)
     return anchors 
 
+def generate_anchors_express_refining_det(base_size=24, ratios=[0.25, 0.39, 0.62],
+                             scales=np.array([1, 3.2, 10])):
+    """
+    Generate anchor (reference) windows by enumerating aspect ratios X
+    scales wrt a reference (0, 0, 15, 15) window.
+    """
+
+    return np.array([0, 0, 179, 47]).reshape((1, 4))
+
 def _whctrs(anchor):
     """
     Return width, height, x center, and y center for an anchor (window).
