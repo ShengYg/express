@@ -14,9 +14,9 @@ def random_crop(x, y, w, h, length):
     return max(int(x), 0), max(int(y), 0), int(w), int(h)
 
 def random_crop_version2(x, y, w, h, length):
-    x -= float(w) / length
+    x -= float(w) / length * 2 
     y -= float(h) / 16
-    w += float(w) / length * 2
+    w += float(w) / length * 4
     h += float(h) / 8
     return max(int(x), 0), max(int(y), 0), int(w), int(h)
 
@@ -124,10 +124,10 @@ def main(args):
 
 if __name__ == '__main__':
     parser = ArgumentParser()
-    parser.add_argument('--root_dir', default='data/express/dataset_test')
-    parser.add_argument('--info_name', default='info_test.pkl')
-    parser.add_argument('--namelist_name', default='namelist_test.pkl')
-    parser.add_argument('--output_dir', default='data/express/test_db_benchmark')
+    parser.add_argument('--root_dir', default='data/express/dataset')
+    parser.add_argument('--info_name', default='info_phone.pkl')
+    parser.add_argument('--namelist_name', default='namelist_phone.pkl')
+    parser.add_argument('--output_dir', default='data/express/pretrain_db_benchmark')
     parser.add_argument('--prepare', default='phone')
     args = parser.parse_args()
     random.seed(1024)
