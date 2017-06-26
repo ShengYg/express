@@ -7,7 +7,7 @@ import argparse
 def parse_args():
     parser = argparse.ArgumentParser(description='Train a Fast R-CNN network')
     parser.add_argument('--thres1', dest='thres1', default=0.8, type=float)
-    parser.add_argument('--thres2', dest='thres2', default=-0.12, type=float)
+    parser.add_argument('--thres2', dest='thres2', default=-1, type=float)
     
     args = parser.parse_args()
     return args
@@ -23,9 +23,6 @@ if __name__ == '__main__':
     cache_file = os.path.join(os.getcwd(), 'demo', 'img_detections.pkl')
     with open(cache_file, 'rb') as fid:
         all_boxes = cPickle.load(fid)
-    cache_file = os.path.join(os.getcwd(), 'demo', 'score_namelist.pkl')
-    with open(cache_file, 'rb') as fid:
-        score_namelist = cPickle.load(fid)
     cache_file = os.path.join(os.getcwd(), 'demo', 'phone_score.pkl')
     with open(cache_file, 'rb') as fid:
         score_all = cPickle.load(fid)
@@ -45,10 +42,7 @@ if __name__ == '__main__':
         gt_phone_num += len(gt_phone)
         for i in det_ind:
             crop_img_name = name + '_{}.jpg'.format(i)
-            scores = score_all[crop_img_name]
-
-            res = np.argmax(scores, axis=1)
-            score = np.max(scores, axis=1)
+            res, score = score_all[crop_img_name]
             if np.sum(score) / score.shape[0] < args.thres2:
                 continue
             all_phone += 1

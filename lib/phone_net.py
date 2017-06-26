@@ -232,6 +232,27 @@ class PhoneNet(nn.Module):
 
         return blob
 
+    def get_image_blob_list(self, im_list):
+
+        processed_ims = []
+        for im in im_list:
+            im_orig = im.astype(np.float32, copy=True)
+            im_orig -= cfg.PIXEL_MEANS
+
+            im_shape = im_orig.shape
+            # print im_shape
+            im_scale_x = float(cfg.TEST.WIDTH) / float(im_shape[1])
+            im_scale_y = float(cfg.TEST.HEIGHT) / float(im_shape[0])
+
+            im = cv2.resize(im_orig, None, None, fx=im_scale_x, fy=im_scale_y,
+                            interpolation=cv2.INTER_LINEAR)
+            processed_ims.append(im)
+
+        # Create a blob to hold the input images
+        blob = self._im_list_to_blob(processed_ims)
+
+        return blob
+
 
     def _im_list_to_blob(self, ims):
         img_shape = ims[0].shape   

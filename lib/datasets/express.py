@@ -25,7 +25,7 @@ class express(imdb):
         self._training_ratio = ratio
         self._root_dir = self._get_default_path() if root_dir is None \
                          else root_dir
-        self._data_path = os.path.join(self._root_dir, 'dataset_test')
+        self._data_path = os.path.join(self._root_dir, 'dataset')
         self._classes = ('__background__', 'phonenum')
         self._namelist = self._load_namelist()
         self._info = self._load_info()
@@ -38,7 +38,7 @@ class express(imdb):
         self.config = {'rpn_file'    : None}
 
     def _load_namelist(self):
-        namelist_path = os.path.join(self._root_dir, 'namelist_test.pkl')
+        namelist_path = os.path.join(self._root_dir, 'namelist_express.pkl')
         if os.path.exists(namelist_path):
             with open(namelist_path, 'rb') as fid:
                 return cPickle.load(fid)
@@ -71,7 +71,7 @@ class express(imdb):
         # return namelist
 
     def _load_info(self):
-        info_path = os.path.join(self._root_dir, 'info_test.pkl')
+        info_path = os.path.join(self._root_dir, 'info_express.pkl')
         if os.path.exists(info_path):
             with open(info_path, 'rb') as fid:
                 return cPickle.load(fid)
