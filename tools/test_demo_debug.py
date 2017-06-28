@@ -31,6 +31,7 @@ if __name__ == '__main__':
         gt = cPickle.load(fid)
 
     all_phone, right_phone, gt_phone_num = 0, 0, 0
+    right_phone_list = []
     # 0: no
     # 1: yes
     # 2: pass
@@ -43,17 +44,25 @@ if __name__ == '__main__':
         for i in det_ind:
             crop_img_name = name + '_{}.jpg'.format(i)
             res, score = score_all[crop_img_name]
-            if np.sum(score) / score.shape[0] < args.thres2:
+            if score < args.thres2:
                 continue
             all_phone += 1
             for gt_i in gt_phone:
                 if (gt_i.shape[0] == res.shape[0]) and (gt_i == res).all():
                     right_phone += 1
+                    right_phone_list.append(crop_img_name)
+                    # print crop_img_name
                     break
                 elif (gt_i.shape[0] < res.shape[0]) and (gt_i == res[res.shape[0] - gt_i.shape[0]:]).all():
                     right_phone += 1
+                    right_phone_list.append(crop_img_name)
+                    # print crop_img_name
                     break
 
+    print 'all phone num: {}'.format(all_phone)
     print 'gt phone num: {}'.format(gt_phone_num)
-    print 'acc: {} / {} = {}'.format(right_phone, all_phone, float(right_phone) / all_phone)
+    print 'acc: {} / {} = {}'.format(right_phone, gt_phone_num, float(right_phone) / gt_phone_num)
+    cache_file = os.path.join(os.getcwd(), 'demo', 'right_phone_list.pkl')
+    with open(cache_file, 'wb') as fid:
+        cPickle.dump(right_phone_list, fid, cPickle.HIGHEST_PROTOCOL)
 

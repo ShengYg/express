@@ -102,6 +102,11 @@ if __name__ == '__main__':
 
         for i in range(cls_dets.shape[0]):
             x1, y1, x2, y2 = cls_dets[i][:4].astype(np.int16)
+            ## add resize
+            # x1 = max(x1 - int(5 * width / 300.0), 0)
+            x2 = max(x2 + int(5 * width / 300.0), 0)
+            y1 = max(y1 - 3, 0)
+            y2 = max(y2 + 3, 0)
             crop_img_name = name + '_{}.jpg'.format(i)
 
             start_time = time.time()
@@ -124,20 +129,29 @@ if __name__ == '__main__':
                 sco = np.max(score, axis=1)
                 res_list.append(res)
                 sco_list.append(sco)
-            d = Counter(res_list)
-            max_cnt, max_value = 0, 0
-            for item in d:
-                if d[item] > max_cnt:
-                    max_cnt = d[item]
-                    max_value = item
-            sco_out = []
-            for r, s in zip(res_list, sco_list):
-                if r == max_value:
-                    sco_out.append(s)
+            ## use count
+            # d = Counter(res_list)
+            # max_cnt, max_value = 0, 0
+            # for item in d:
+            #     if d[item] > max_cnt:
+            #         max_cnt = d[item]
+            #         max_value = item
+            # sco_out = []
+            # for r, s in zip(res_list, sco_list):
+            #     if r == max_value:
+            #         sco_out.append(s)
 
+            # time_all += time.time() - start_time
+            # cnt += 1
+            # score_all[crop_img_name] = [np.array([int(s) for s in list(max_value)]), np.mean(np.vstack(sco_out))]
+
+            ## use score_max
+            sco_list = [np.mean(item) for item in sco_list]
+            ind = np.argmax(sco_list)
             time_all += time.time() - start_time
             cnt += 1
-            score_all[crop_img_name] = [np.array([int(s) for s in list(max_value)]), np.mean(np.vstack(sco_out), axis=0)]
+            score_all[crop_img_name] = [np.array([int(s) for s in list(res_list[ind])]), sco_list[ind]]
+
         img_num += 1
 
     print 'ave_time: {}'.format(float(time_all) / cnt)
