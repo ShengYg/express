@@ -1,0 +1,77 @@
+html, body, header, button, input {
+  font-family: "Roboto", Helvetica, Arial, sans-serif;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background: #999;
+}
+
+header {
+  padding: 20px 0px;
+  height: 60px;
+  background: #eee;
+}
+
+header #intro {
+  display: inline-block;
+  text-align: left;
+  float: left;
+  margin: 10px 20px;
+  font-size: 16px;
+  width: 300px;
+}
+
+header button {
+  height: 50px;
+  font-size: 20px;
+}
+
+header input {
+  height: 48px;
+  width: 100px;
+  margin: 0 5px;
+  padding-right: 5px;
+  font-size: 20px;
+  text-align: right;
+}
+
+header #counter {
+  display: inline-block;
+  font-size: 20px;
+  margin: 0 5px;
+}
+
+.text-blue { 
+  color: #2196F3;
+}
+
+.pane {
+  width: 1200px;
+  height: auto;
+  margin-bottom: 10px;
+}
+
+.pic {
+  width: 700px;
+  height: auto;
+  float: left;
+}
+
+.list {
+  width: 500px;
+  height: auto;
+  float: right;
+  margin-top: 2px;
+  overflow: hidden;
+}
+
+dd {
+    padding: 0;
+}
+
+canvas {
+  float: left;
+  margin: 20px 10px;
+}

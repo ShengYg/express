@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Visualization</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <main>
+    <header>
+      <div id="intro">
+        <span class="text-blue">phone number</span> detection
+      </div>
+      <button id="prev-btn">Prev (a)</button>
+      <input type="text" id="cur-id-text">
+      <div id="counter"></div>
+      <button id="go-btn">Go</button>
+      <button id="next-btn">Next (d)</button>
+      <button id="rand-btn">Random (r)</button>
+    </header>
+    <div class="pane" id="probe-wrapper">
+      <div class="pic" id="probe">
+      </div>
+      <div class="list" id="probe_res">
+        <dd class>results:
+        </dd>
+        <dd class>gt1:<input type="text" id="gt1"/>
+        </dd>
+        <dd class>gt2:<input type="text" id="gt2"/>
+        </dd>
+        <dd class>det1:<input type="text" id="det1"/>
+        </dd>
+        <dd class>det2:<input type="text" id="det2"/>
+        </dd>
+        <dd class>det3:<input type="text" id="det3"/>
+        </dd>
+      </div>
+    </div>
+  </main>
+
+  <script src="js/jquery-3.1.1.min.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
