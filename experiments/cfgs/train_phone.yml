@@ -15,4 +15,4 @@ TRAIN:
 TEST:
   WIDTH: 240
   HEIGHT: 48
-  CANDIDATE: single
+  CANDIDATE: all
