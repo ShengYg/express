@@ -80,9 +80,6 @@ class ProposalLayerTrain(caffe.Layer):
         nms_thresh    = cfg[cfg_key].RPN_NMS_THRESH     #0.7,   0.7
         min_size      = cfg[cfg_key].RPN_MIN_SIZE       #16,    16
 
-        # out0 = np.zeros((batch_size, post_nms_topN, 5), dtype=np.float32)
-        # out1 = np.zeros((batch_size, post_nms_topN, 1), dtype=np.float32)
-
         scores = bottom[0].data[:, self._num_anchors:, :, :]  #(n, 9, h, w)
         bbox_deltas = bottom[1].data                          #(n, 36, h, w)
         im_info = bottom[2].data

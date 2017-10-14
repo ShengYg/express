@@ -2,7 +2,10 @@ import os
 import cPickle
 import numpy as np
 import argparse
+import json
 
+def list_to_str(l):
+    return ''.join([str(i) for i in l])
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train a Fast R-CNN network')
@@ -35,34 +38,45 @@ if __name__ == '__main__':
     # 0: no
     # 1: yes
     # 2: pass
+    ret = []
     for im_name in filelist:
+        item = {}
+        item['im_name'] = im_name
         name = im_name.split('_')[0]
         det = all_boxes[name]
+        item['det_bbox'] = det.tolist()
         det_ind = np.where(det[:, 4] > args.thres1)[0]
         gt_phone = gt[name]
+        item['gt'] = map(list_to_str, map(list, gt_phone))
         gt_phone_num += len(gt_phone)
+        item['det'] = []
         for i in det_ind:
             crop_img_name = name + '_{}.jpg'.format(i)
             res, score = score_all[crop_img_name]
             if score < args.thres2:
                 continue
             all_phone += 1
+            item['det'].append(list_to_str(res.tolist()))
             for gt_i in gt_phone:
                 if (gt_i.shape[0] == res.shape[0]) and (gt_i == res).all():
                     right_phone += 1
                     right_phone_list.append(crop_img_name)
-                    # print crop_img_name
                     break
                 elif (gt_i.shape[0] < res.shape[0]) and (gt_i == res[res.shape[0] - gt_i.shape[0]:]).all():
                     right_phone += 1
                     right_phone_list.append(crop_img_name)
-                    # print crop_img_name
                     break
+        ret.append(item)
 
-    print 'all phone num: {}'.format(all_phone)
+    print 'all detected phone num: {}'.format(all_phone)
     print 'gt phone num: {}'.format(gt_phone_num)
     print 'acc: {} / {} = {}'.format(right_phone, gt_phone_num, float(right_phone) / gt_phone_num)
     cache_file = os.path.join(os.getcwd(), 'demo', 'right_phone_list.pkl')
     with open(cache_file, 'wb') as fid:
         cPickle.dump(right_phone_list, fid, cPickle.HIGHEST_PROTOCOL)
+
+    dump_json = os.path.join(os.getcwd(), 'vis', 'results.json')
+    with open(dump_json, 'w') as f:
+        json.dump(ret, f)
+
 

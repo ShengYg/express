@@ -8,6 +8,12 @@ from progressbar import ProgressBar
 import time
 from PIL import Image
 
+"""
+remove replicated image before run data_prepare
+"""
+
+PHONE_WIDTH = 12
+
 def outbox(box): # (x1, y1, x2, y2)
     x = min(box[:, 0])
     y = min(box[:, 1])
@@ -78,7 +84,7 @@ def get_phone_box(box):
     box[:, 2] += box[:, 0]
     box[:, 3] += box[:, 1]
 
-    if box.shape[0] > 12:  # horizontal cut
+    if box.shape[0] > PHONE_WIDTH:  # horizontal cut
         x_dis = abs(np.hstack((box[1:, 0], box[-1,0])) - box[:, 0])
         ind = np.where(x_dis > ave_width * 2)[0] + 1
         boxes = np.split(box, ind)
@@ -118,6 +124,22 @@ def phone_match(old, new):
         ret.append(match)
     return ret
 
+def phone_len_match(label, gt):
+    ret = []
+    gt_flag = [False] * len(gt)
+    for item1 in label:
+        match = False
+        for j in range(len(gt)):
+            if not gt_flag[j] and item1.shape[0] == gt[j].shape[0]:
+                match = True
+                gt_flag[j] = True
+                break
+            # elif item1.shape[0] > gt[j].shape[0] and (item1[item1.shape[0] - gt[j].shape[0]:] == gt[j]).all():
+            #     match = True
+            #     break
+        ret.append(match)
+    return ret
+
 def main(args):
     ResultType = '4'
     box_two_thres = 60
@@ -134,6 +156,13 @@ def main(args):
     if os.path.exists(cache_file):
         with open(cache_file, 'rb') as fid:
             gt_phone = cPickle.load(fid)
+
+    exclude = []
+    if args.exclude_namelist:
+        print 'exclude file exist'
+        if os.path.exists(args.exclude_namelist):
+            with open(args.exclude_namelist, 'rb') as fid:
+                exclude = cPickle.load(fid)
     
     if ResultType == '2':
         print 'ResultType: {}'.format(ResultType)
@@ -185,7 +214,7 @@ def main(args):
         i = 0
         print 'process start'
         for filename in filelist:
-            num, suffix = filename.split('.')[0], filename.split('.')[1]
+            num, suffix = filename.split('.')
             if suffix == 'xml':
                 boxes = None
                 try:
@@ -207,15 +236,15 @@ def main(args):
                             box[:, 3] += box[:, 1]
                         phone_box, phone_label = np.vstack(map(outbox, boxes)), map(get_phonenum, boxes)
                         for phone in phone_label:
-                            if phone.shape[0] > 12:
+                            if phone.shape[0] > PHONE_WIDTH:
                                 go_on = True
                         if not go_on:
                             namelist.append(num + '.jpg')
                             info_all[num + '.jpg'] = [phone_box, phone_label]
 
-                            sourcefile = path + num + '.jpg'
+                            sourcefile = args.dataset_path + num + '.jpg'
                             if not os.path.isfile(sourcefile):
-                                raise Exception('No file.jpg')
+                                raise Exception('No {}'.format(sourcefile))
                             else:
                                 img = Image.open(sourcefile)
                                 img_size = img.size
@@ -233,23 +262,28 @@ def main(args):
                             box[:, 3] += box[:, 1]
                         phone_box, phone_label = np.vstack(map(outbox, boxes)), map(get_phonenum, boxes)
                         for phone in phone_label:
-                            if phone.shape[0] > 12:
+                            if phone.shape[0] > PHONE_WIDTH or phone.shape[0] < 5:
                                 go_on = True
                         if not go_on:
                             assert len(phone_label) == phone_box.shape[0], 'pic: {}, lebel: {}, box: {}'.format(num, phone_label, phone_box.shape[0])
                             if len(gt_phone[key]) != len(phone_label):
                                 continue
 
-                            namelist.append(num + '.jpg')
-                            info_all[num + '.jpg'] = [phone_box, phone_label]
+                            # ind = phone_len_match(phone_label, gt_phone[key])
+                            # if not (np.array(ind) == True).all():
+                            #     continue
 
-                            sourcefile = path + num + '.jpg'
-                            if not os.path.isfile(sourcefile):
-                                raise Exception('No file.jpg')
-                            else:
-                                img = Image.open(sourcefile)
-                                img_size = img.size
-                                info_all[num + '.jpg'].append(img_size)
+                            if num + '.jpg' not in exclude:
+                                namelist.append(num + '.jpg')
+                                info_all[num + '.jpg'] = [phone_box, phone_label]
+
+                                sourcefile = args.dataset_path + num + '.jpg'
+                                if not os.path.isfile(sourcefile):
+                                    raise Exception('No {}'.format(sourcefile))
+                                else:
+                                    img = Image.open(sourcefile)
+                                    img_size = img.size
+                                    info_all[num + '.jpg'].append(img_size)
 
                 # getting label from gt_phone, used for training phone
                 # it should be chosen carefully to make test_set large
@@ -264,7 +298,7 @@ def main(args):
                             box[:, 3] += box[:, 1]
                         phone_box, phone_label = np.vstack(map(outbox, boxes)), map(get_phonenum, boxes)
                         for phone in phone_label:
-                            if phone.shape[0] > 12:
+                            if phone.shape[0] > PHONE_WIDTH:
                                 go_on = True
                         if not go_on:
                             assert len(phone_label) == phone_box.shape[0], 'pic: {}, lebel: {}, box: {}'.format(num, phone_label, phone_box.shape[0])
@@ -277,17 +311,18 @@ def main(args):
                             ind_ = filter(lambda x:x>=0, ind_)
                             phone_box = phone_box[ind_]
                             num_box = [boxes[j] for j in range(len(boxes)) if ind[j]]
-                            namelist.append(num + '.jpg')
-                            assert phone_box.shape[0] == len(phone_label)
-                            info_all[num + '.jpg'] = [phone_box, phone_label]
-                            sourcefile = args.dataset_path + num + '.jpg'
-                            if not os.path.isfile(sourcefile):
-                                raise Exception('No file.jpg')
-                            else:
-                                img = Image.open(sourcefile)
-                                img_size = img.size
-                                info_all[num + '.jpg'].append(img_size)
-                            info_all[num + '.jpg'].append(num_box)
+                            if num + '.jpg' not in exclude:
+                                namelist.append(num + '.jpg')
+                                assert phone_box.shape[0] == len(phone_label)
+                                info_all[num + '.jpg'] = [phone_box, phone_label]
+                                sourcefile = args.dataset_path + num + '.jpg'
+                                if not os.path.isfile(sourcefile):
+                                    raise Exception('No {}'.format(sourcefile))
+                                else:
+                                    img = Image.open(sourcefile)
+                                    img_size = img.size
+                                    info_all[num + '.jpg'].append(img_size)
+                                info_all[num + '.jpg'].append(num_box)
 
                 # getting label from gt_phone, all included ,used for testing all
                 # info_phone [phone_box, phone_label, img_size]
@@ -301,7 +336,7 @@ def main(args):
                             box[:, 3] += box[:, 1]
                         phone_box, phone_label = np.vstack(map(outbox, boxes)), map(get_phonenum, boxes)
                         for phone in phone_label:
-                            if phone.shape[0] > 12:
+                            if phone.shape[0] > PHONE_WIDTH:
                                 go_on = True
                         if not go_on:
                             assert len(phone_label) == phone_box.shape[0], 'pic: {}, lebel: {}, box: {}'.format(num, phone_label, phone_box.shape[0])
@@ -316,7 +351,7 @@ def main(args):
                             info_all[num + '.jpg'] = [phone_box, phone_label]
                             sourcefile = args.dataset_path + num + '.jpg'
                             if not os.path.isfile(sourcefile):
-                                raise Exception('No file.jpg')
+                                raise Exception('No {}'.format(sourcefile))
                             else:
                                 img = Image.open(sourcefile)
                                 img_size = img.size
@@ -330,7 +365,10 @@ def main(args):
         with open(args.info_path, 'wb') as fid:
             cPickle.dump(info_all, fid, cPickle.HIGHEST_PROTOCOL)
         random.shuffle(namelist)
-        print len(namelist)
+        print 'namelist length: {}'.format(len(namelist))
+        if args.namelist_type == 3:
+            namelist = namelist[:1000]
+            print 'type3: selected namelist length: {}'.format(len(namelist))
         with open(args.namelist_path, 'wb') as fid:
             cPickle.dump(namelist, fid, cPickle.HIGHEST_PROTOCOL)
 
@@ -359,11 +397,45 @@ if __name__ == '__main__':
     ## namelist_path:   'data/express/namelist_test.pkl'
     ## 
     ## if namelist_type != 0, namelist.pkl should be processed manually
+    ## 1. prepare namelist.pkl
+    ## 2. prepare namelist_test.pkl, choose 1000 pics from it as test_set, it should not be in any train_set
+    ## 3. prepare namelist_express.pkl and namelist_phone.pkl, exclude [1000 pics]
+
+    # 1.
+    # parser.add_argument('--dataset_path', default='data/express/dataset/')
+    # parser.add_argument('--info_path', default='data/express/info.pkl')
+    # parser.add_argument('--namelist_path', default='data/express/namelist.pkl')
+    # parser.add_argument('--namelist_type', default=0)
+    # parser.add_argument('--exclude_namelist', default=None)
+    # args = parser.parse_args()
+    # random.seed(1024)
+    # main(args)
+
+    # 2.
+    # parser.add_argument('--dataset_path', default='data/express/dataset/')
+    # parser.add_argument('--info_path', default='data/express/info_test.pkl')
+    # parser.add_argument('--namelist_path', default='data/express/namelist_test.pkl')
+    # parser.add_argument('--namelist_type', default=3)
+    # parser.add_argument('--exclude_namelist', default=None)
+    # args = parser.parse_args()
+    # random.seed(1024)
+    # main(args)
+
+    # 3.
+    # parser.add_argument('--dataset_path', default='data/express/dataset/')
+    # parser.add_argument('--info_path', default='data/express/info_express.pkl')
+    # parser.add_argument('--namelist_path', default='data/express/namelist_express.pkl')
+    # parser.add_argument('--namelist_type', default=1)
+    # parser.add_argument('--exclude_namelist', default='data/express/namelist_test.pkl')
+    # args = parser.parse_args()
+    # random.seed(1024)
+    # main(args)
 
     parser.add_argument('--dataset_path', default='data/express/dataset/')
-    parser.add_argument('--info_path', default='data/express/info.pkl')
-    parser.add_argument('--namelist_path', default='data/express/namelist.pkl')
-    parser.add_argument('--namelist_type', default=1)
+    parser.add_argument('--info_path', default='data/express/info_phone.pkl')
+    parser.add_argument('--namelist_path', default='data/express/namelist_phone.pkl')
+    parser.add_argument('--namelist_type', default=2)
+    parser.add_argument('--exclude_namelist', default='data/express/namelist_test.pkl')
     args = parser.parse_args()
     random.seed(1024)
     main(args)

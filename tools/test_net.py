@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-
-# --------------------------------------------------------
 import _init_paths
 from fast_rcnn.test import test_net
 from fast_rcnn.config import cfg, cfg_from_file, cfg_from_list, get_output_dir
@@ -81,10 +78,13 @@ if __name__ == '__main__':
     caffe.set_device(args.gpu_id)
 
     # Detect and store re-id features for all the images in the test images pool
-    imdb = get_imdb(args.imdb_name, os.path.join(cfg.DATA_DIR, 'express'), ratio=0.97)
+    imdb = get_imdb(args.imdb_name, os.path.join(cfg.DATA_DIR, 'express', 'pretrain_db_benchmark'), ratio=0.95)
     imdb.competition_mode(args.comp_mode)
 
-    net = caffe.Net(args.test_def, args.caffemodel, caffe.TEST)
-    net.name = os.path.splitext(os.path.basename(args.caffemodel))[0]
-    output_dir = get_output_dir(imdb, net.name)
-    test_net(net, imdb, output_dir, thresh=0.8, iou_thres=0.5)
+    net = None
+    output_dir = get_output_dir(imdb, os.path.splitext(os.path.basename(args.caffemodel))[0])
+    cache_file = os.path.join(output_dir, 'detections.pkl')
+    if not os.path.exists(cache_file):
+        net = caffe.Net(args.test_def, args.caffemodel, caffe.TEST)
+    test_net(net, imdb, output_dir, thresh=0.7)
+

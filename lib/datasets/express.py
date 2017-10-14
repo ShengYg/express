@@ -45,31 +45,6 @@ class express(imdb):
         else:
             raise Exception('No namelist.pkl, init error')
 
-        # namelist_path = os.path.join(self._root_dir, 'namelist_phone.pkl')
-        # if os.path.exists(namelist_path):
-        #     with open(namelist_path, 'rb') as fid:
-        #         return cPickle.load(fid)
-        # else:
-        #     raise Exception('No namelist.pkl, init error')
-
-        # namelist1, namelist2, namelist3 = None, None, None
-        # namelist_path = os.path.join(self._root_dir, 'namelist_phone.pkl')
-        # if os.path.exists(namelist_path):
-        #     with open(namelist_path, 'rb') as fid:
-        #         namelist1 = cPickle.load(fid)
-        # namelist_path = os.path.join(self._root_dir, 'namelist.pkl')
-        # if os.path.exists(namelist_path):
-        #     with open(namelist_path, 'rb') as fid:
-        #         namelist2 = cPickle.load(fid)
-        # namelist1 = namelist1[:int(len(namelist1) * 0.8)]
-        # namelist2 = namelist2[:int(len(namelist2) * 0.8)]
-        # namelist_path = os.path.join(self._root_dir, 'namelist_all.pkl')
-        # if os.path.exists(namelist_path):
-        #     with open(namelist_path, 'rb') as fid:
-        #         namelist3 = cPickle.load(fid)
-        # namelist = list(set(namelist3) - (set(namelist1) | set(namelist2)))
-        # return namelist
-
     def _load_info(self):
         info_path = os.path.join(self._root_dir, 'info_express.pkl')
         if os.path.exists(info_path):
@@ -77,13 +52,6 @@ class express(imdb):
                 return cPickle.load(fid)
         else:
             raise Exception('No info.pkl, init error')
-
-        # info_path = os.path.join(self._root_dir, 'info_all.pkl')
-        # if os.path.exists(info_path):
-        #     with open(info_path, 'rb') as fid:
-        #         return cPickle.load(fid)
-        # else:
-        #     raise Exception('No info.pkl, init error')
 
     def image_path_at(self, i):
         return self.image_path_from_index(self._image_index[i])

@@ -60,7 +60,7 @@ def generate_anchors_person(base_size=24, ratios=[2.8],
                          for i in xrange(ratio_anchors.shape[0])]).astype(np.int32)
     return anchors 
 
-def generate_anchors_express(base_size=24, ratios=[0.25, 0.39, 0.62],
+def generate_anchors_express(base_size=12, ratios=[0.25, 0.39, 0.62],
                              scales=np.array([1, 3.2, 10])):
     """
     Generate anchor (reference) windows by enumerating aspect ratios X

@@ -74,3 +74,6 @@ runs/
 pytorch/
 demo/
 test_all/
+runs_old/
+draft/
+caffe-fast-rcnn

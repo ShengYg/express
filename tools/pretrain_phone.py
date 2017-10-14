@@ -41,7 +41,7 @@ def prepare_roidb(imdb):
         roidb[i]['image'] = imdb.image_path_at(i)
 
 class Net(nn.Module):
-    def __init__(self, bn=False):
+    def __init__(self, bn=True):
         super(Net, self).__init__()
         self.conv1 = nn.Sequential(Conv2d(3, 64, 3, same_padding=True, bn=bn),
                                    nn.MaxPool2d(2))
@@ -123,7 +123,7 @@ def train(net, optimizer, lr):
     print 'starting training'
     start_step = 0
     end_step = 6000
-    lr_decay_steps = {3000, 4000}
+    lr_decay_steps = {2000, 3000}
     lr_decay = 1./10
 
     train_loss = 0
@@ -189,7 +189,7 @@ if __name__ == '__main__':
     formatter = logging.Formatter('[%(levelname)-8s] %(message)s')
     console.setFormatter(formatter)
     logging.getLogger().addHandler(console)
-    configure("runs/pretrain")
+    configure("runs/phone")
 
     imdb_name = 'mnist_train'
     cfg_file = 'experiments/cfgs/train_mnist.yml'

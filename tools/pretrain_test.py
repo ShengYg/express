@@ -44,7 +44,7 @@ if __name__ == '__main__':
     imdb_name = 'mnist_test'
     cfg_file = 'experiments/cfgs/train_mnist.yml'
     model_path = 'output/mnist_train/'
-    model_name = 'mnist_4200.h5'
+    model_name = 'mnist_2000.h5'
     trained_model = model_path + model_name
 
     rand_seed = 1024

@@ -107,11 +107,18 @@ class MultilabelDataLayer(object):
 
         # crop version 2
         x, y, w, h = bbox
-        crop_x = np.random.randint(x)
-        crop_w = np.random.randint(x+w, im_shape[1]) - crop_x
-        crop_y = np.random.randint(y)
-        crop_h = np.random.randint(y+h, im_shape[0]) - crop_y
-        crop_img = im[crop_y:crop_y+crop_h, crop_x:crop_x+crop_w, :]
+        crop_img, crop_w, crop_h = None, None, None
+        if (x, y, w, h) == (0, 0, im.shape[1]-1, im.shape[0]-1):
+            crop_img = im[:,:,:]
+            crop_w = w
+            crop_h = h
+        else:
+            # print 'it means you are using random shifted image'
+            crop_x = np.random.randint(x)
+            crop_w = np.random.randint(x+w, im_shape[1]-1) - crop_x
+            crop_y = np.random.randint(y)
+            crop_h = np.random.randint(y+h, im_shape[0]-1) - crop_y
+            crop_img = im[crop_y:crop_y+crop_h, crop_x:crop_x+crop_w, :]
 
         im_scale_x = float(cfg.TRAIN.WIDTH) / float(crop_w)
         im_scale_y = float(cfg.TRAIN.HEIGHT) / float(crop_h)

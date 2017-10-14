@@ -1,4 +1,4 @@
-train_net: "models/express/VGG16/train.prototxt"
+train_net: "/home/sy/code/re_id/express/models/express/VGG16/train.prototxt"
 
 base_lr: 0.001
 lr_policy: "step"

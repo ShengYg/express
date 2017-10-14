@@ -16,11 +16,11 @@ from fast_rcnn.nms_wrapper import nms
 DEBUG = False
 
 """
-bottom[0]   cls_scores
-bottom[1]   bbox_pred
-bottom[2]   im_info     shape(n, 3)     (h, w, scale_ratio)
-top[0]      rois_blob   shape(n, 5)     (batch, x1, y1, x2, y2)
-top[1]      scores      shape(n, 1)
+bottom[0]   rpn_cls_prob    (3, 18, h, w)
+bottom[1]   rpn_bbox_pred   (3, 36, h, w)
+bottom[2]   im_info         (1, 3) ==> (3, 3)                               3 means (h, w, scale_ratio)
+top[0]      rpn_rois        (post_nms_topN, 5) ==> (3, post_nms_topN, 5)    5 means (batch, x1, y1, x2, y2)
+#top[1]     scores          (n, post_nms_topN, 1)
 """
 
 class ProposalLayerTest(caffe.Layer):
@@ -73,13 +73,12 @@ class ProposalLayerTest(caffe.Layer):
             'Only single item batches are supported'
 
         cfg_key = 'TEST'
+
         pre_nms_topN  = cfg[cfg_key].RPN_PRE_NMS_TOP_N
         post_nms_topN = cfg[cfg_key].RPN_POST_NMS_TOP_N
         nms_thresh    = cfg[cfg_key].RPN_NMS_THRESH
         min_size      = cfg[cfg_key].RPN_MIN_SIZE
 
-        # the first set of _num_anchors channels are bg probs
-        # the second set are the fg probs, which we want
         scores = bottom[0].data[:, self._num_anchors:, :, :]
         bbox_deltas = bottom[1].data
         im_info = bottom[2].data[0, :]

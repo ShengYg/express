@@ -18,9 +18,10 @@ from progressbar import ProgressBar
 
 
 def prepare_roidb(imdb):
-    roidb = imdb.roidb
+    roidb = imdb.gt_roidb()
     for i in xrange(len(imdb.image_index)):
         roidb[i]['image'] = imdb.image_path_at(i)
+    return roidb
 
 def im_detect(net, image):
 
@@ -31,19 +32,19 @@ def im_detect(net, image):
     return scores
 
 def phone_append(a):
-    if a.shape[0] < 12:
+    if a[0].shape[0] < 12:
         res = np.zeros((12, ))
         res[:] = 10
-        res[:a.shape[0]] = a
+        res[:a[0].shape[0]] = a[0]
         return res.astype(np.uint8)
-    return a[:].astype(np.uint8)
+    return a[0][:].astype(np.uint8)
 
 if __name__ == '__main__':
     # hyper-parameters
     imdb_name = 'phone_test'
     cfg_file = 'experiments/cfgs/train_phone.yml'
-    model_path = 'output/phone_train/'
-    model_name = 'phone_25000.h5'
+    model_path = 'output/phone_out/'
+    model_name = 'phone_56000.h5'
     trained_model = model_path + model_name
 
     rand_seed = 1024
@@ -52,27 +53,29 @@ if __name__ == '__main__':
     thresh = 0.05
     vis = False
 
-    if rand_seed is not None:
-        np.random.seed(rand_seed)
+    # if rand_seed is not None:
+    #     np.random.seed(rand_seed)
     cfg_from_file(cfg_file)
     # print 'Using config:'
     # pprint.pprint(cfg)
 
-    # imdb = get_imdb(imdb_name)
     imdb = get_imdb(imdb_name, os.path.join(cfg.DATA_DIR, 'express', 'test_db_benchmark'), ratio=0.)
-    prepare_roidb(imdb)
-    roidb = imdb.roidb
+    # imdb = get_imdb(imdb_name, os.path.join(cfg.DATA_DIR, 'express', 'pretrain_db_benchmark_extra'), ratio=0.8)
+    roidb = prepare_roidb(imdb)
 
     # loading rescaling weights
     # info = None
-    # cache_file = '/home/sy/code/re_id/express/data/express/test_db_benchmark/info.pkl'
+    # cache_file = '/home/sy/code/re_id/express/data/express/pretrain_db_benchmark/info.pkl'
     # if os.path.exists(cache_file):
     #     with open(cache_file, 'rb') as fid:
     #         info = cPickle.load(fid)
     # phones = info.values()
+    # length_weights = [item[0].shape[0] for item in phones]
+    # length_weights = np.array([Counter(length_weights)[i] for i in range(5, 13)])
     # phones = np.vstack(map(phone_append, phones))
     # phones = [phones[:, i] for i in range(12)]
     # weights = np.vstack([np.array([Counter(phones[i])[j] for j in range(10)])[:10] for i in range(12)])
+    length_weights = np.ones((8,))
     weights = np.ones((12, 10))
     
     output_dir = get_output_dir(imdb, model_name)
@@ -84,7 +87,7 @@ if __name__ == '__main__':
     else:
         # load data
         print 'loading model {}'.format(trained_model)
-        net = PhoneNet(classes=imdb.classes, debug=False)
+        net = PhoneNet(classes=imdb.classes, bn=False)
         network.load_net(trained_model, net)
         print 'load model successfully!'
 
@@ -113,7 +116,7 @@ if __name__ == '__main__':
 
     print 'Evaluating detections'
     # imdb.evaluate_detections(all_boxes, output_dir)
-    imdb.evaluate_detections(all_boxes, output_dir, weights=weights)
+    imdb.evaluate_detections(all_boxes, output_dir, roidb, weights=weights, length_weights=length_weights)
 
 
     

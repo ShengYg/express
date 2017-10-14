@@ -244,7 +244,7 @@ layer {
   param { lr_mult: 1.0 }
   param { lr_mult: 2.0 }
   convolution_param {
-    num_output: 2   # 2(bg/fg) * 9(anchors)
+    num_output: 18   # 2(bg/fg) * 9(anchors)
     kernel_size: 1 pad: 0 stride: 1
     weight_filler { type: "xavier" }
     bias_filler { type: "constant" value: 0 }
@@ -259,7 +259,7 @@ layer {
   param { lr_mult: 1.0 }
   param { lr_mult: 2.0 }
   convolution_param {
-    num_output: 4   # 4 * 9(anchors)
+    num_output: 36   # 4 * 9(anchors)
     kernel_size: 1 pad: 0 stride: 1
     weight_filler { type: "xavier" }
     bias_filler { type: "constant" value: 0 }
@@ -334,7 +334,7 @@ layer {
   type: 'Reshape'
   bottom: 'rpn_cls_prob'
   top: 'rpn_cls_prob_reshape'
-  reshape_param { shape { dim: 0 dim: 2 dim: -1 dim: 0 } }
+  reshape_param { shape { dim: 0 dim: 18 dim: -1 dim: 0 } }
 }
 
 layer {
@@ -380,8 +380,8 @@ layer {
   bottom: "rois"
   top: "pool"
   roi_pooling_param {
-    pooled_w: 7
-    pooled_h: 7
+    pooled_w: 4
+    pooled_h: 4
     spatial_scale: 0.25 # 1/4
   }
 }

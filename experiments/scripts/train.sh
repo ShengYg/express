@@ -13,13 +13,8 @@ export PYTHONUNBUFFERED="True"
 
 GPU_ID=0
 NET="VGG16"
-DATASET=express
+DATASET=phone
 
-# array=( $@ )
-# len=${#array[@]}
-# EXTRA_ARGS=${array[@]:1:$len}
-# # EXTRA_ARGS=${array[@]:2:$len}
-# EXTRA_ARGS_SLUG=${EXTRA_ARGS// /_}
 
 case $DATASET in
   express)
@@ -27,6 +22,14 @@ case $DATASET in
     TEST_IMDB="express_test"
     PT_DIR="express"
     ITERS=40000
+    YML="train.yml"
+    ;;
+  phone)
+    TRAIN_IMDB="phone_train"
+    TEST_IMDB="phone_test"
+    PT_DIR="phone"
+    ITERS=60000
+    YML="train.yml"
     ;;
   *)
     echo "No dataset given"
@@ -39,19 +42,11 @@ exec &> >(tee -a "$LOG")
 echo Logging output to "$LOG"
 
 
-time python tools/train_net.py --gpu ${GPU_ID} \
-  --solver models/${PT_DIR}/${NET}/solver.prototxt \
-  --imdb ${TRAIN_IMDB} \
-  --iters ${ITERS} \
-  --cfg experiments/cfgs/train.yml \
-  ${EXTRA_ARGS}
-
 # time python tools/train_net.py --gpu ${GPU_ID} \
 #   --solver models/${PT_DIR}/${NET}/solver.prototxt \
-#   --weights output/psdb_train/resnet50_iter_40000.caffemodel \
 #   --imdb ${TRAIN_IMDB} \
 #   --iters ${ITERS} \
-#   --cfg experiments/cfgs/train.yml \
+#   --cfg experiments/cfgs/${YML} \
 #   ${EXTRA_ARGS}
 
 # set +x
@@ -63,5 +58,44 @@ time python tools/train_net.py --gpu ${GPU_ID} \
 #   --net ${NET_FINAL} \
 #   --test_def models/${PT_DIR}/${NET}/test.prototxt \
 #   --imdb ${TEST_IMDB} \
-#   --cfg experiments/cfgs/train.yml \
+#   --cfg experiments/cfgs/${YML} \
 #   ${EXTRA_ARGS}
+
+####################################################################################################
+
+# time python tools/train_net.py --gpu ${GPU_ID} \
+#   --solver models/${PT_DIR}/${NET}/solver.prototxt \
+#   --imdb ${TRAIN_IMDB} \
+#   --iters ${ITERS} \
+#   --cfg experiments/cfgs/${YML} \
+#   ${EXTRA_ARGS}
+
+# set +x
+# NET_FINAL=`grep -B 1 "done solving" ${LOG} | grep "Wrote snapshot" | awk '{print $4}'`
+# set -x
+
+
+NET_FINAL="output/phone_train/phone_iter_40000.caffemodel"
+time python tools/test_net.py --gpu ${GPU_ID} \
+  --net ${NET_FINAL} \
+  --test_def models/${PT_DIR}/${NET}/test.prototxt \
+  --imdb ${TEST_IMDB} \
+  --cfg experiments/cfgs/${YML} \
+  ${EXTRA_ARGS}
+
+  NET_FINAL="output/phone_train/phone_iter_50000.caffemodel"
+time python tools/test_net.py --gpu ${GPU_ID} \
+  --net ${NET_FINAL} \
+  --test_def models/${PT_DIR}/${NET}/test.prototxt \
+  --imdb ${TEST_IMDB} \
+  --cfg experiments/cfgs/${YML} \
+  ${EXTRA_ARGS}
+
+NET_FINAL="output/phone_train/phone_iter_60000.caffemodel"
+time python tools/test_net.py --gpu ${GPU_ID} \
+  --net ${NET_FINAL} \
+  --test_def models/${PT_DIR}/${NET}/test.prototxt \
+  --imdb ${TEST_IMDB} \
+  --cfg experiments/cfgs/${YML} \
+  ${EXTRA_ARGS}
+

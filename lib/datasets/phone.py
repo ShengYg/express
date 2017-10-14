@@ -93,6 +93,7 @@ class phone(imdb):
             gt_roidb.append({
                 'labels': labels,
                 'bbox': bbox,
+                'image': index,
                 'flipped' : False})
         with open(cache_file, 'wb') as fid:
             cPickle.dump(gt_roidb, fid, cPickle.HIGHEST_PROTOCOL)
@@ -106,7 +107,7 @@ class phone(imdb):
     def _get_default_path_benchmark(self):
         return os.path.join(cfg.DATA_DIR, 'express', 'pretrain_db_benchmark')
 
-    def evaluate_detections(self, all_boxes, output_dir, weights=np.ones((12, 10))):
+    def evaluate_detections(self, all_boxes, output_dir, roidb, weights=np.ones((12, 10)), length_weights=np.ones((8,))):
         def get_labels_rescaling(det):
             label = list(np.argmax(det, axis=1))
             score = list(np.max(det, axis=1))
@@ -152,7 +153,7 @@ class phone(imdb):
         def if_phone_right(list_a, arr_b):
             for a in list_a:
                 if (np.array(a) == arr_b).all():
-                    return a
+                    return True
             return False
 
         def merge(a, b, ind_b, index, k):
@@ -177,21 +178,33 @@ class phone(imdb):
                 index = merge(det[0], det[i], det_ind[i], index, k)
             return index
 
-        print 'weights:'
-        print weights
-        gt_roidb = self.gt_roidb()
+        # print 'weights:'
+        # print weights
+        # print 'length_weights:'
+        # print length_weights
+
+        # gt_roidb = self.gt_roidb()
+        gt_roidb = roidb
         assert len(all_boxes) == len(gt_roidb)
         assert len(all_boxes[1]) == 13
 
+        all_length = [0] * 8
+        each_length = [0] * 8
+        phone_right_each = [0] * 8
         tp, num, tlength, phone_right = 0, 0, 0, 0
+        tp_arr = np.zeros((12, ))
+        all_arr = np.zeros((12, ))
         extra_tp, extra_num = 0, 0
         res_all = []
         phone_right_list = []
         mat = np.zeros((10, 11), dtype=np.int32)
         test_image_num = 0
         for gt, det in zip(gt_roidb, all_boxes):
+
             gt_labels = gt['labels']
-            phone_length = np.argmax(det[-1]) + 5
+            all_length[gt_labels.shape[0]-5] += 1
+            phone_length = np.argmax(safe_log(det[-1][0]) - safe_log(length_weights)) + 5
+
             det = np.vstack((det[:phone_length]))
             det = safe_log(det[:, :-1])
             det = det - safe_log(weights[:phone_length])
@@ -222,15 +235,19 @@ class phone(imdb):
                 res = [phone + ([10] * (gt_labels.shape[0] - len(phone))) for phone in res]
             else:
                 tlength += 1
+                each_length[gt_labels.shape[0]-5] += 1
             
             res1 = np.array(res[0])
             num += gt_labels.shape[0]
             tp += np.sum((res1 == gt_labels))
+            tp_arr[np.where(res1 == gt_labels)] += 1
+            all_arr[np.arange(gt_labels.shape[0])] += 1
             for i, j in zip(gt_labels, res1):
                 mat[i][j] += 1
             if if_phone_right(res, gt_labels):
                 phone_right += 1
                 phone_right_list.append(test_image_num)
+                phone_right_each[gt_labels.shape[0]-5] += 1
             test_image_num += 1
 
         cache_file = os.path.join(output_dir, 'digit_mat.pkl')
@@ -242,7 +259,16 @@ class phone(imdb):
         cache_file = os.path.join(output_dir, 'phone_right_list.pkl')
         with open(cache_file, 'wb') as fid:
             cPickle.dump(phone_right_list, fid, cPickle.HIGHEST_PROTOCOL)
-        print 'right digits: {:.4f}'.format(float(tp) / float(num))
-        print 'right length: {:.4f}'.format(float(tlength) / float(len(gt_roidb)))
-        print 'right phones: {:.4f}'.format(float(phone_right) / float(len(gt_roidb)))
+        print 'right digits: {} / {} = {:.4f}'.format(tp, num, float(tp) / float(num))
+        print 'right length: {} / {} = {:.4f}'.format(tlength, len(gt_roidb), float(tlength) / float(len(gt_roidb)))
+        print 'right phones: {} / {} = {:.4f}'.format(phone_right, len(gt_roidb), float(phone_right) / float(len(gt_roidb)))
         print 'extra right phones: {:.4f}'.format(float(extra_tp) / float(extra_num))
+
+        print 'all: {}'.format(all_length)
+        print 'length right: {}'.format(each_length)
+        print 'phone right: {}'.format(phone_right_each)
+
+        print tp_arr
+        print all_arr
+        print tp_arr.astype(np.float32) / all_arr
+

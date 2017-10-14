@@ -2,6 +2,7 @@ import _init_paths
 import os
 import torch
 import numpy as np
+import random
 from datetime import datetime
 import pprint
 
@@ -15,7 +16,7 @@ from datasets.factory import get_imdb
 from fast_rcnn.config import cfg, cfg_from_file
 from tensorboard_logger import configure, log_value
 import logging
-
+from tensorboardX import SummaryWriter
 
 try:
     from termcolor import cprint
@@ -53,16 +54,11 @@ if __name__ == '__main__':
     output_dir = 'output/phone_train'
 
     start_step = 0
-    end_step = 40000
-    lr_decay_steps = {20000, 30000}
+    end_step = 60000
+    lr_decay_steps = {25000, 40000}
     lr_decay = 1./10
 
     rand_seed = 1024
-    _DEBUG = True
-    exp_name = None # the previous experiment name in TensorBoard
-
-    if rand_seed is not None:
-        np.random.seed(rand_seed)
 
     # load config
     cfg_from_file(cfg_file)
@@ -75,33 +71,49 @@ if __name__ == '__main__':
     weight_decay = cfg.TRAIN.WEIGHT_DECAY
     disp_interval = cfg.TRAIN.DISPLAY
     log_interval = cfg.TRAIN.LOG_IMAGE_ITERS
-    snap_interval = cfg.TRAIN.SNAPSHOT_ITERS
+    # snap_interval = cfg.TRAIN.SNAPSHOT_ITERS
+    snap_interval = 4000
 
     # load data
     # imdb = get_imdb(imdb_name)
-    imdb = get_imdb(imdb_name, os.path.join(cfg.DATA_DIR, 'express', 'pretrain_db_benchmark'), ratio=0.8)
+    imdb = get_imdb(imdb_name, os.path.join(cfg.DATA_DIR, 'express', 'pretrain_db_benchmark'), ratio=1.0)
     prepare_roidb(imdb)
     roidb = imdb.roidb
     print 'roidb length: {}'.format(len(roidb))
     data_layer = MultilabelDataLayer(roidb, 12)
 
-    # load net
-    print 'init net'
-    net = PhoneNet(classes=imdb.classes, debug=_DEBUG)
-    network.weights_normal_init(net)
-    # network.load_pretrained_npy(net, pretrained_model)
-    # model_file = '/media/longc/Data/models/VGGnet_fast_rcnn_iter_70000.h5'
-    model_file = 'output/mnist_train/mnist_4200.h5'
-    network.load_pretrain_net(model_file, net)
+    net_bn = False
+    net = None
+    if net_bn:
+        print 'init net'
+        net = PhoneNet(classes=imdb.classes, bn=True)
+        network.weights_normal_init(net)
 
-    net.cuda()
-    net.train()
+        model_file = 'output/mnist_train/mnist_2200.h5'
+        network.load_pretrain_net(model_file, net, num=17*6)
 
-    params = list(net.parameters())[8:]
-    optimizer = torch.optim.SGD(params, lr=lr, momentum=momentum, weight_decay=weight_decay)
+        net.cuda()
+        net.train()
+
+        params = list(net.parameters())[4*6:]
+        optimizer = torch.optim.SGD(params, lr=lr, momentum=momentum, weight_decay=0)
+    else:
+        print 'init net'
+        net = PhoneNet(classes=imdb.classes, bn=False)
+        network.weights_normal_init(net)
+
+        model_file = 'output/mnist_train/mnist_4200_no_bn.h5'
+        network.load_pretrain_net(model_file, net, num=17*2)
+
+        net.cuda()
+        net.train()
+
+        params = list(net.parameters())[4*2:]
+        optimizer = torch.optim.SGD(params, lr=lr, momentum=momentum, weight_decay=weight_decay)
 
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)
+
 
     print 'starting training'
     train_loss = 0

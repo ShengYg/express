@@ -5,7 +5,6 @@
 # Written by Ross Girshick and Sean Bell
 # --------------------------------------------------------
 
-import os
 import caffe
 import yaml
 from fast_rcnn.config import cfg
@@ -42,7 +41,6 @@ class AnchorTargetLayer(caffe.Layer):
         self._anchors = generate_anchors_express()
         self._num_anchors = self._anchors.shape[0]      # 9
         self._feat_stride = layer_params['feat_stride'] # 16
-        batch_size = cfg.TRAIN.IMS_PER_BATCH
 
         if DEBUG:
             print 'anchors:'
@@ -67,6 +65,7 @@ class AnchorTargetLayer(caffe.Layer):
             print 'AnchorTargetLayer: height', height, 'width', width
 
         A = self._num_anchors
+        batch_size = cfg.TRAIN.IMS_PER_BATCH
         # labels
         top[0].reshape(batch_size, 1, A * height, width)
         # bbox_targets
@@ -112,8 +111,6 @@ class AnchorTargetLayer(caffe.Layer):
         K = shifts.shape[0]     # w*h
         all_anchors = (self._anchors.reshape((1, A, 4)) +
                        shifts.reshape((1, K, 4)).transpose((1, 0, 2))) 
-        print self._anchors
-        print all_anchors
         all_anchors = all_anchors.reshape((K * A, 4))
         total_anchors = int(K * A)
 
@@ -191,8 +188,6 @@ class AnchorTargetLayer(caffe.Layer):
                 disable_inds = npr.choice(
                     bg_inds, size=(len(bg_inds) - num_bg), replace=False)
                 labels[disable_inds] = -1
-                #print "was %s inds, disabling %s, now %s inds" % (
-                    #len(bg_inds), len(disable_inds), np.sum(labels == 0))
 
             bbox_targets = np.zeros((len(inds_inside), 4), dtype=np.float32)
             bbox_targets = _compute_targets(anchors, curr_gt_boxes[argmax_overlaps, :])

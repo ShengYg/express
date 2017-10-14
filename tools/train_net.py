@@ -1,14 +1,3 @@
-#!/usr/bin/env python
-
-# --------------------------------------------------------
-# Fast R-CNN
-# Copyright (c) 2015 Microsoft
-# Licensed under The MIT License [see LICENSE for details]
-# Written by Ross Girshick
-# --------------------------------------------------------
-
-"""Train a Fast R-CNN network on a region of interest database."""
-
 import _init_paths
 from fast_rcnn.train import get_training_roidb, train_net
 from fast_rcnn.config import cfg, cfg_from_file, cfg_from_list, get_output_dir
@@ -32,7 +21,7 @@ def parse_args():
                         default=0, type=int)
     parser.add_argument('--solver', dest='solver',
                         help='solver prototxt',
-                        default=None, type=str)
+                        default='/home/sy/code/re_id/express/models/express/VGG16/solver.prototxt', type=str)
     parser.add_argument('--iters', dest='max_iters',
                         help='number of iterations to train',
                         default=40000, type=int)
@@ -41,10 +30,10 @@ def parse_args():
                         default=None, type=str)
     parser.add_argument('--cfg', dest='cfg_file',
                         help='optional config file',
-                        default=None, type=str)
+                        default='/home/sy/code/re_id/express/experiments/cfgs/train.yml', type=str)
     parser.add_argument('--imdb', dest='imdb_name',
                         help='dataset to train on',
-                        default='voc_2007_trainval', type=str)
+                        default='express_train', type=str)
     parser.add_argument('--rand', dest='randomize',
                         help='randomize (do not use a fixed seed)',
                         action='store_true')
@@ -64,7 +53,7 @@ def parse_args():
 
 
 def get_roidb(imdb_name, rpn_file=None):
-    imdb = get_imdb(imdb_name, os.path.join(cfg.DATA_DIR, 'express', 'pretrain_db_refining_det'), ratio=0.8)
+    imdb = get_imdb(imdb_name, os.path.join(cfg.DATA_DIR, 'express', 'pretrain_db_benchmark'), ratio=0.8)
     print 'Loaded dataset {} for training'.format(imdb.name)
     imdb.set_proposal_method(cfg.TRAIN.PROPOSAL_METHOD)
     print 'Set proposal method: {:s}'.format(cfg.TRAIN.PROPOSAL_METHOD)
