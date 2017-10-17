@@ -35,7 +35,7 @@ def safe_log(x, minval=10e-40):
 
 if __name__ == '__main__':
 
-    cfg_from_file('/home/sy/code/re_id/express/experiments/cfgs/train.yml')
+    cfg_from_file(os.path.join(os.getcwd(), 'experiments', 'cfgs', 'train.yml'))
     print('Using config:')
     pprint.pprint(cfg)
 
