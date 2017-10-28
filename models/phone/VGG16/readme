@@ -1,0 +1,4 @@
+train_ohem:
+BATCH_SIZE = -1
+AGNOSTIC = True
+proposal_target_layer num_classes = 2

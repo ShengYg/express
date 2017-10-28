@@ -16,7 +16,6 @@ from datasets.factory import get_imdb
 from fast_rcnn.config import cfg, cfg_from_file
 from tensorboard_logger import configure, log_value
 import logging
-from tensorboardX import SummaryWriter
 
 try:
     from termcolor import cprint

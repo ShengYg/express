@@ -43,7 +43,7 @@ if __name__ == '__main__':
     # hyper-parameters
     imdb_name = 'phone_test'
     cfg_file = 'experiments/cfgs/train_phone.yml'
-    model_path = 'output/phone_out/'
+    model_path = 'output/phone_train/'
     model_name = 'phone_56000.h5'
     trained_model = model_path + model_name
 

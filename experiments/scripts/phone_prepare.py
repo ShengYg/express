@@ -3,7 +3,6 @@ import os
 import cPickle
 import cv2
 import random
-from argparse import ArgumentParser
 from progressbar import ProgressBar
 
 RANDOM_CROP = True
@@ -23,22 +22,22 @@ def random_crop(x, y, w, h, length):
     return max(int(x), 0), max(int(y), 0), int(w), int(h)
 
 def main(args):
-    if not os.path.isdir(os.path.join(args.output_dir, 'images')):
-        os.makedirs(os.path.join(args.output_dir, 'images'))
+    if not os.path.isdir(os.path.join(output_dir, 'images')):
+        os.makedirs(os.path.join(output_dir, 'images'))
 
     meta = {}
     meta_refining_det= {}
     name_all = []
-    path = '/home/sy/code/re_id/express/data/express/'
+    path = './data/express/'
 
-    namelist_path = path + args.namelist_name
+    namelist_path = path + namelist_name
     if os.path.exists(namelist_path):
         with open(namelist_path, 'rb') as fid:
             namelist = cPickle.load(fid)
     else:
         raise Exception('No namelist.pkl, init error')
 
-    info_path = path + args.info_name
+    info_path = path + info_name
     if os.path.exists(info_path):
         with open(info_path, 'rb') as fid:
             info = cPickle.load(fid)
@@ -46,13 +45,13 @@ def main(args):
         raise Exception('No info.pkl, init error')
 
     # samples
-    if args.prepare == 'phone':
+    if prepare == 'phone':
         print 'start preprocessing phone'
         pbar = ProgressBar(maxval=len(namelist))
         pbar.start()
         i = 0
         for im_name in namelist:
-            im = cv2.imread(os.path.join(args.root_dir, im_name), 0)
+            im = cv2.imread(os.path.join(root_dir, im_name), 0)
             info_im = info[im_name]
             boxes, labels, im_size, num_boxes = info_im
             img_num = 0
@@ -91,7 +90,7 @@ def main(args):
                     assert np.all(a>0)
                 except:
                     print '{}'.format(filename)
-                cv2.imwrite(os.path.join(args.output_dir, 'images', filename), cropped)
+                cv2.imwrite(os.path.join(output_dir, 'images', filename), cropped)
                 meta[filename] = [label, bbox, im_size, num_box]
 
                 name_all.append(filename)
@@ -103,22 +102,22 @@ def main(args):
 
         random.shuffle(name_all)
         print 'phone image nums: {}'.format(len(name_all))
-        cache_file = os.path.join(args.output_dir, 'namelist.pkl')
+        cache_file = os.path.join(output_dir, 'namelist.pkl')
         with open(cache_file, 'wb') as fid:
             cPickle.dump(name_all, fid, cPickle.HIGHEST_PROTOCOL)
 
-        cache_file = os.path.join(args.output_dir, 'info.pkl')
+        cache_file = os.path.join(output_dir, 'info.pkl')
         with open(cache_file, 'wb') as fid:
             cPickle.dump(meta, fid, cPickle.HIGHEST_PROTOCOL)
 
-    elif args.prepare == 'num':
+    elif prepare == 'num':
         print 'start preprocessing phone num'
         pbar = ProgressBar(maxval=len(namelist))
         pbar.start()
         img_num = 0
         j = 0
         for im_name in namelist:
-            im = cv2.imread(os.path.join(args.root_dir, im_name), 0)
+            im = cv2.imread(os.path.join(root_dir, im_name), 0)
             info_im = info[im_name]
             boxes, labels = info_im[3], info_im[1]
             for box, label in zip(boxes, labels):
@@ -129,7 +128,7 @@ def main(args):
                     x1, y1, x2, y2 = box[i][:4]
                     cropped = im[y1:y2, x1:x2]
                     filename = '{:06d}.jpg'.format(img_num)
-                    cv2.imwrite(os.path.join(args.output_dir, 'images', filename), cropped)
+                    cv2.imwrite(os.path.join(output_dir, 'images', filename), cropped)
 
                     meta[filename] = label[i]
                     name_all.append(filename)
@@ -140,21 +139,21 @@ def main(args):
         print 'image nums: {}'.format(j)
 
         random.shuffle(name_all)
-        cache_file = os.path.join(args.output_dir, 'namelist.pkl')
+        cache_file = os.path.join(output_dir, 'namelist.pkl')
         with open(cache_file, 'wb') as fid:
             cPickle.dump(name_all, fid, cPickle.HIGHEST_PROTOCOL)
 
-        cache_file = os.path.join(args.output_dir, 'info.pkl')
+        cache_file = os.path.join(output_dir, 'info.pkl')
         with open(cache_file, 'wb') as fid:
             cPickle.dump(meta, fid, cPickle.HIGHEST_PROTOCOL)
 
-    elif args.prepare == 'phone_extra':
+    elif prepare == 'phone_extra':
         print 'start preprocessing extra phone'
         pbar = ProgressBar(maxval=len(namelist))
         pbar.start()
         i = 0
         for im_name in namelist:
-            im = cv2.imread(os.path.join(args.root_dir, im_name), 0)
+            im = cv2.imread(os.path.join(root_dir, im_name), 0)
             info_im = info[im_name]
             boxes, labels, num_boxes = info_im[0], info_im[1], info_im[3]
             img_num = 0
@@ -169,7 +168,7 @@ def main(args):
                 cropped = im[y1:y1+h1, x1:x1+w1]
                 bbox = np.array([x-x1, y-y1, w, h])
                 filename = '{}_{}.jpg'.format(im_name[:12], img_num)
-                cv2.imwrite(os.path.join(args.output_dir, 'images', filename), cropped)
+                cv2.imwrite(os.path.join(output_dir, 'images', filename), cropped)
 
                 meta[filename] = [label, bbox]
                 name_all.append(filename)
@@ -189,7 +188,7 @@ def main(args):
                         bbox = np.array([x-x1, y-y1, w_in, h])
 
                         filename = '{}_{}.jpg'.format(im_name[:12], img_num)
-                        cv2.imwrite(os.path.join(args.output_dir, 'images', filename), cropped)
+                        cv2.imwrite(os.path.join(output_dir, 'images', filename), cropped)
 
                         cropped_label = label[start:end+1]
                         meta[filename] = [cropped_label, bbox]
@@ -202,56 +201,48 @@ def main(args):
 
         random.shuffle(name_all)
         print 'phone image nums: {}'.format(len(name_all))
-        cache_file = os.path.join(args.output_dir, 'namelist.pkl')
+        cache_file = os.path.join(output_dir, 'namelist.pkl')
         with open(cache_file, 'wb') as fid:
             cPickle.dump(name_all, fid, cPickle.HIGHEST_PROTOCOL)
 
-        cache_file = os.path.join(args.output_dir, 'info.pkl')
+        cache_file = os.path.join(output_dir, 'info.pkl')
         with open(cache_file, 'wb') as fid:
             cPickle.dump(meta, fid, cPickle.HIGHEST_PROTOCOL)
 
 
 if __name__ == '__main__':
     # mnist
-    # parser = ArgumentParser()
-    # parser.add_argument('--root_dir', default='data/express/dataset')
-    # parser.add_argument('--info_name', default='info_phone.pkl')
-    # parser.add_argument('--namelist_name', default='namelist_phone.pkl')
-    # parser.add_argument('--output_dir', default='data/express/pretrain_mnist')
-    # parser.add_argument('--prepare', default='num')
-    # args = parser.parse_args()
-    # random.seed(1024)
-    # main(args)
+    root_dir = 'data/express/dataset'
+    info_name = 'info_phone.pkl'
+    namelist_name = 'namelist_phone.pkl'
+    output_dir = 'data/express/pretrain_mnist'
+    prepare = 'num'
+    random.seed(1024)
+    main(args)
 
     # train phone
-    parser = ArgumentParser()
-    parser.add_argument('--root_dir', default='data/express/dataset')
-    parser.add_argument('--info_name', default='info_phone.pkl')
-    parser.add_argument('--namelist_name', default='namelist_phone.pkl')
-    parser.add_argument('--output_dir', default='data/express/pretrain_db_benchmark')
-    parser.add_argument('--prepare', default='phone')
-    args = parser.parse_args()
+    root_dir = 'data/express/dataset'
+    info_name = 'info_phone.pkl'
+    namelist_name = 'namelist_phone.pkl'
+    output_dir = 'data/express/pretrain_db_benchmark'
+    prepare = 'phone'
     random.seed(1024)
     main(args)
 
     # test phone
-    # parser = ArgumentParser()
-    # parser.add_argument('--root_dir', default='data/express/dataset')
-    # parser.add_argument('--info_name', default='info_test.pkl')
-    # parser.add_argument('--namelist_name', default='namelist_test.pkl')
-    # parser.add_argument('--output_dir', default='data/express/test_db_benchmark')
-    # parser.add_argument('--prepare', default='phone')
-    # args = parser.parse_args()
-    # random.seed(1024)
-    # main(args)
+    root_dir = 'data/express/dataset'
+    info_name = 'info_test.pkl'
+    namelist_name = 'namelist_test.pkl'
+    output_dir = 'data/express/test_db_benchmark'
+    prepare = 'phone'
+    random.seed(1024)
+    main(args)
 
     # train extra phone
-    # parser = ArgumentParser()
-    # parser.add_argument('--root_dir', default='data/express/dataset')
-    # parser.add_argument('--info_name', default='info_phone.pkl')
-    # parser.add_argument('--namelist_name', default='namelist_phone.pkl')
-    # parser.add_argument('--output_dir', default='data/express/pretrain_db_benchmark_extra')
-    # parser.add_argument('--prepare', default='phone_extra')
-    # args = parser.parse_args()
+    # root_dir = 'data/express/dataset'
+    # info_name = 'info_phone.pkl'
+    # namelist_name = 'namelist_phone.pkl'
+    # output_dir = 'data/express/pretrain_db_benchmark_extra'
+    # prepare = 'phone_extra'
     # random.seed(1024)
     # main(args)

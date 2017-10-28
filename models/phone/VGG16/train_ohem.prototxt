@@ -1,17 +1,16 @@
 name: "VGG_ILSVRC_16_layers"
-
-input: "data"
-input_shape {
-  dim: 1
-  dim: 3
-  dim: 224
-  dim: 224
-}
-
-input: "im_info"
-input_shape {
-  dim: 1
-  dim: 3
+layer {
+  name: 'input-data'
+  type: 'Python'
+  top: 'data'
+  top: 'im_info'
+  top: 'gt_boxes'
+  top: 'im_inds'
+  python_param {
+    module: 'roi_data_layer.layer'
+    layer: 'RoIDataLayer'
+    param_str: "'num_classes': 11"
+  }
 }
 
 layer {
@@ -275,6 +274,51 @@ layer {
    reshape_param { shape { dim: 0 dim: 2 dim: -1 dim: 0 } }
 }
 
+layer {
+  name: 'rpn-data'
+  type: 'Python'
+  bottom: 'rpn_cls_score'
+  bottom: 'gt_boxes'
+  bottom: 'im_info'
+  bottom: 'data'
+  bottom: 'im_inds'
+  top: 'rpn_labels'
+  top: 'rpn_bbox_targets'
+  top: 'rpn_bbox_inside_weights'
+  top: 'rpn_bbox_outside_weights'
+  python_param {
+    module: 'rpn.anchor_target_layer'
+    layer: 'AnchorTargetLayer'
+    param_str: "'feat_stride': 4"
+  }
+}
+
+layer {
+  name: "rpn_loss_cls"
+  type: "SoftmaxWithLoss"
+  bottom: "rpn_cls_score_reshape"
+  bottom: "rpn_labels"
+  propagate_down: 1
+  propagate_down: 0
+  top: "rpn_cls_loss"
+  loss_weight: 1
+  loss_param {
+    ignore_label: -1
+    normalize: true
+  }
+}
+
+layer {
+  name: "rpn_loss_bbox"
+  type: "SmoothL1Loss"
+  bottom: "rpn_bbox_pred"
+  bottom: "rpn_bbox_targets"
+  bottom: 'rpn_bbox_inside_weights'
+  bottom: 'rpn_bbox_outside_weights'
+  top: "rpn_loss_bbox"
+  loss_weight: 1
+  smooth_l1_loss_param { sigma: 3.0 }
+}
 
 #========= RoI Proposal ============
 
@@ -299,16 +343,35 @@ layer {
   bottom: 'rpn_cls_prob_reshape'
   bottom: 'rpn_bbox_pred'
   bottom: 'im_info'
-  top: 'rois'
+  top: 'rpn_rois'
   python_param {
-    module: 'rpn.proposal_layer_test'
-    layer: 'ProposalLayerTest'
+    module: 'rpn.proposal_layer_train'
+    layer: 'ProposalLayerTrain'
     param_str: "'feat_stride': 4"
   }
 }
 
 
+layer {
+  name: 'roi-data'
+  type: 'Python'
+  bottom: 'rpn_rois'
+  bottom: 'gt_boxes'
+  bottom: 'im_inds'
+  top: 'rois'
+  top: 'labels'
+  top: 'bbox_targets'
+  top: 'bbox_inside_weights'
+  top: 'bbox_outside_weights'
+  python_param {
+    module: 'rpn.proposal_target_layer'
+    layer: 'ProposalTargetLayer'
+    param_str: "'num_classes': 2"
+  }
+}
+
 #========= RCNN ============
+
 layer {
   name: "roi_pool"
   type: "ROIPooling"
@@ -403,28 +466,10 @@ layer {
   }
 }
 layer {
-  name: "cls_prob_pre"
-  type: "Softmax"
-  bottom: "cls_score"
-  top: "cls_prob_pre"
-}
-layer {
-    name: "cls_prob_reshape"
-    type: "Reshape"
-    bottom: "cls_prob_pre"
-    top: "cls_prob"
-    reshape_param {
-        shape {
-            dim: -1
-            dim: 11
-        }
-    }
-}
-layer {
-  name: "bbox_pred_pre"
+  name: "bbox_pred"
   type: "InnerProduct"
   bottom: "fc7"
-  top: "bbox_pred_pre"
+  top: "bbox_pred"
   param {
     lr_mult: 1
   }
@@ -437,15 +482,111 @@ layer {
     bias_filler { type: "constant" value: 0 }
   }
 }
+
+#--------------ohem--------------
 layer {
-    name: "bbox_pred_reshape"
-    type: "Reshape"
-    bottom: "bbox_pred_pre"
-    top: "bbox_pred"
-    reshape_param {
-        shape {
-            dim: -1
-            dim: 8
-        }
-    }
+  name: "loss_cls_ohem"
+  type: "SoftmaxWithLossOHEM"
+  bottom: "cls_score"
+  bottom: "labels"
+   top: "temp_loss_cls"
+   top: "temp_prob_cls"
+   top: "loss_cls_ohem"
+   loss_weight: 0
+   loss_weight: 0
+   loss_weight: 0
+   propagate_down: false
+   propagate_down: false
 }
+
+layer {
+   bottom: "loss_cls_ohem"
+   top: "loss_cls_ohem_reshape"
+   name: "loss_cls_ohem_reshape"
+   type: "Reshape"
+   reshape_param { shape { dim: 0 dim: 0 dim: 1 dim: 1 } }
+}
+
+layer {
+  name: "loss_bbox_ohem"
+  type: "SmoothL1LossOHEM"
+  bottom: "bbox_pred"
+  bottom: "bbox_targets"
+  bottom: "bbox_inside_weights"
+   top: "temp_loss_bbox"
+   top: "loss_bbox_ohem"
+   loss_weight: 0
+   loss_weight: 0
+   propagate_down: false
+   propagate_down: false
+   propagate_down: false
+}
+layer {
+   name: "roi_loss"
+   type: "Eltwise"
+   bottom: "loss_cls_ohem_reshape"
+   bottom: "loss_bbox_ohem"
+   top: "roi_loss"
+   propagate_down: false
+   propagate_down: false
+}
+layer {
+   bottom: "rois"
+   bottom: "roi_loss"
+   bottom: "labels"
+   bottom: "bbox_inside_weights"
+   top: "labels_ohem"
+   top: "bbox_loss_weights_ohem"
+   name: "annotator_detector"
+   type: "BoxAnnotatorOHEM"
+   box_annotator_ohem_param {
+        roi_per_img: 128
+        ignore_label: -1
+   }
+   propagate_down: false
+   propagate_down: false
+   propagate_down: false
+   propagate_down: false
+}
+
+layer {
+   name: "silence"
+   type: "Silence"
+   bottom: "bbox_outside_weights"
+   bottom: "temp_loss_cls"
+   bottom: "temp_prob_cls"
+   bottom: "temp_loss_bbox"
+}
+
+#-----------------------output------------------------
+layer {
+   name: "loss"
+   type: "SoftmaxWithLoss"
+   bottom: "cls_score"
+   bottom: "labels_ohem"
+   top: "loss_cls"
+   loss_weight: 1
+   loss_param {
+        ignore_label: -1
+   }
+   propagate_down: true
+   propagate_down: false
+}
+
+layer {
+   name: "loss_bbox"
+   type: "SmoothL1LossOHEM"
+   bottom: "bbox_pred"
+   bottom: "bbox_targets"
+   bottom: "bbox_loss_weights_ohem"
+   top: "loss_bbox"
+   loss_weight: 1
+   loss_param {
+        normalization: PRE_FIXED
+        pre_fixed_normalizer: 1280
+   }
+   propagate_down: true
+   propagate_down: false
+   propagate_down: false
+}
+

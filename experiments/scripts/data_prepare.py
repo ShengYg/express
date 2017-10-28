@@ -3,7 +3,6 @@ import os
 import numpy as np
 import cPickle
 import random
-from argparse import ArgumentParser
 from progressbar import ProgressBar
 import time
 from PIL import Image
@@ -140,28 +139,30 @@ def phone_len_match(label, gt):
         ret.append(match)
     return ret
 
-def main(args):
+def main(dataset_path, info_path, namelist_path, namelist_type=0, exclude_namelist=None):
     ResultType = '4'
     box_two_thres = 60
     box_height_thres = 30
     info_all = {}
     namelist = []
-    if not os.path.isdir(args.dataset_path):
-        print 'error data dir path {}'.format(args.dataset_path)
-    filelist = sorted(os.listdir(args.dataset_path))
+    if not os.path.isdir(dataset_path):
+        print 'error data dir path {}'.format(dataset_path)
+    filelist = sorted(os.listdir(dataset_path))
     if not filelist:
-        print 'no pic in dir {}'.format(args.dataset_path)
+        print 'no pic in dir {}'.format(dataset_path)
 
-    cache_file = '/home/sy/code/re_id/data/express/gt.pkl'
+    cache_file = './data/express/gt.pkl'
     if os.path.exists(cache_file):
         with open(cache_file, 'rb') as fid:
             gt_phone = cPickle.load(fid)
+    else:
+        raise Exception('No gt.pkl')
 
     exclude = []
-    if args.exclude_namelist:
+    if exclude_namelist:
         print 'exclude file exist'
-        if os.path.exists(args.exclude_namelist):
-            with open(args.exclude_namelist, 'rb') as fid:
+        if os.path.exists(exclude_namelist):
+            with open(exclude_namelist, 'rb') as fid:
                 exclude = cPickle.load(fid)
     
     if ResultType == '2':
@@ -218,7 +219,7 @@ def main(args):
             if suffix == 'xml':
                 boxes = None
                 try:
-                    boxes = get_box_4(args.dataset_path + filename)
+                    boxes = get_box_4(dataset_path + filename)
                 except ET.ParseError:
                     print 'XML exception, filename: {}'.format(filename)
                     pass
@@ -227,7 +228,7 @@ def main(args):
 
                 ## getting all names
                 # info [phone_box, phone_label, img_size]
-                if args.namelist_type == 0:
+                if namelist_type == 0:
                     phone_box, phone_label = None, None
                     if boxes:
                         go_on = False
@@ -242,7 +243,7 @@ def main(args):
                             namelist.append(num + '.jpg')
                             info_all[num + '.jpg'] = [phone_box, phone_label]
 
-                            sourcefile = args.dataset_path + num + '.jpg'
+                            sourcefile = dataset_path + num + '.jpg'
                             if not os.path.isfile(sourcefile):
                                 raise Exception('No {}'.format(sourcefile))
                             else:
@@ -252,7 +253,7 @@ def main(args):
 
                 ## getting label from image and xml, used for training express
                 # info [phone_box, phone_label, img_size]
-                if args.namelist_type == 1:
+                if namelist_type == 1:
                     phone_box, phone_label = None, None
                     key = num.split('_')[0]
                     if boxes:
@@ -277,7 +278,7 @@ def main(args):
                                 namelist.append(num + '.jpg')
                                 info_all[num + '.jpg'] = [phone_box, phone_label]
 
-                                sourcefile = args.dataset_path + num + '.jpg'
+                                sourcefile = dataset_path + num + '.jpg'
                                 if not os.path.isfile(sourcefile):
                                     raise Exception('No {}'.format(sourcefile))
                                 else:
@@ -288,7 +289,7 @@ def main(args):
                 # getting label from gt_phone, used for training phone
                 # it should be chosen carefully to make test_set large
                 # info_phone [phone_box, phone_label, img_size, num_box]
-                elif args.namelist_type == 2:
+                elif namelist_type == 2:
                     phone_box, phone_label = None, None
                     key = num.split('_')[0]
                     if boxes:
@@ -315,7 +316,7 @@ def main(args):
                                 namelist.append(num + '.jpg')
                                 assert phone_box.shape[0] == len(phone_label)
                                 info_all[num + '.jpg'] = [phone_box, phone_label]
-                                sourcefile = args.dataset_path + num + '.jpg'
+                                sourcefile = dataset_path + num + '.jpg'
                                 if not os.path.isfile(sourcefile):
                                     raise Exception('No {}'.format(sourcefile))
                                 else:
@@ -326,7 +327,7 @@ def main(args):
 
                 # getting label from gt_phone, all included ,used for testing all
                 # info_phone [phone_box, phone_label, img_size]
-                elif args.namelist_type == 3:
+                elif namelist_type == 3:
                     phone_box, phone_label = None, None
                     key = num.split('_')[0]
                     if boxes:
@@ -349,7 +350,7 @@ def main(args):
                                 continue
                             namelist.append(num + '.jpg')
                             info_all[num + '.jpg'] = [phone_box, phone_label]
-                            sourcefile = args.dataset_path + num + '.jpg'
+                            sourcefile = dataset_path + num + '.jpg'
                             if not os.path.isfile(sourcefile):
                                 raise Exception('No {}'.format(sourcefile))
                             else:
@@ -362,80 +363,50 @@ def main(args):
         pbar.finish()
 
         # info_all: [phone_box, phone_label, img_size, num_box]
-        with open(args.info_path, 'wb') as fid:
+        with open(info_path, 'wb') as fid:
             cPickle.dump(info_all, fid, cPickle.HIGHEST_PROTOCOL)
         random.shuffle(namelist)
         print 'namelist length: {}'.format(len(namelist))
-        if args.namelist_type == 3:
+        if namelist_type == 3:
             namelist = namelist[:1000]
             print 'type3: selected namelist length: {}'.format(len(namelist))
-        with open(args.namelist_path, 'wb') as fid:
+        with open(namelist_path, 'wb') as fid:
             cPickle.dump(namelist, fid, cPickle.HIGHEST_PROTOCOL)
 
 if __name__ == '__main__':
-    parser = ArgumentParser()
-    ##########################################################
-    ##
-    ## namelist_type: 0
-    ## dataset_path:    'data/express/dataset/'
-    ## info_path:       'data/express/info.pkl'
-    ## namelist_path:   'data/express/namelist.pkl'
-    ##
-    ## namelist_type: 1
-    ## dataset_path:    'data/express/dataset/'
-    ## info_path:       'data/express/info_express.pkl'
-    ## namelist_path:   'data/express/namelist_express.pkl'
-    ## 
-    ## namelist_type: 2
-    ## dataset_path:    'data/express/dataset/'
-    ## info_path:       'data/express/info_phone.pkl'
-    ## namelist_path:   'data/express/namelist_phone.pkl'
-    ## 
-    ## namelist_type: 3
-    ## dataset_path:    'data/express/dataset/'
-    ## info_path:       'data/express/info_test.pkl'
-    ## namelist_path:   'data/express/namelist_test.pkl'
-    ## 
-    ## if namelist_type != 0, namelist.pkl should be processed manually
-    ## 1. prepare namelist.pkl
-    ## 2. prepare namelist_test.pkl, choose 1000 pics from it as test_set, it should not be in any train_set
-    ## 3. prepare namelist_express.pkl and namelist_phone.pkl, exclude [1000 pics]
 
     # 1.
-    # parser.add_argument('--dataset_path', default='data/express/dataset/')
-    # parser.add_argument('--info_path', default='data/express/info.pkl')
-    # parser.add_argument('--namelist_path', default='data/express/namelist.pkl')
-    # parser.add_argument('--namelist_type', default=0)
-    # parser.add_argument('--exclude_namelist', default=None)
-    # args = parser.parse_args()
-    # random.seed(1024)
-    # main(args)
+    dataset_path = 'data/express/dataset/'
+    info_path = 'data/express/info.pkl'
+    namelist_path = 'data/express/namelist.pkl'
+    namelist_type = 0
+    exclude_namelist = None
+    random.seed(1024)
+    main(dataset_path, info_path, namelist_path, namelist_type, exclude_namelist)
 
     # 2.
-    # parser.add_argument('--dataset_path', default='data/express/dataset/')
-    # parser.add_argument('--info_path', default='data/express/info_test.pkl')
-    # parser.add_argument('--namelist_path', default='data/express/namelist_test.pkl')
-    # parser.add_argument('--namelist_type', default=3)
-    # parser.add_argument('--exclude_namelist', default=None)
-    # args = parser.parse_args()
-    # random.seed(1024)
-    # main(args)
+    dataset_path = 'data/express/dataset/'
+    info_path = 'data/express/info_test.pkl'
+    namelist_path = 'data/express/namelist_test.pkl'
+    namelist_type = 3
+    exclude_namelist = None
+    random.seed(1024)
+    main(dataset_path, info_path, namelist_path, namelist_type, exclude_namelist)
 
     # 3.
-    # parser.add_argument('--dataset_path', default='data/express/dataset/')
-    # parser.add_argument('--info_path', default='data/express/info_express.pkl')
-    # parser.add_argument('--namelist_path', default='data/express/namelist_express.pkl')
-    # parser.add_argument('--namelist_type', default=1)
-    # parser.add_argument('--exclude_namelist', default='data/express/namelist_test.pkl')
-    # args = parser.parse_args()
-    # random.seed(1024)
-    # main(args)
-
-    parser.add_argument('--dataset_path', default='data/express/dataset/')
-    parser.add_argument('--info_path', default='data/express/info_phone.pkl')
-    parser.add_argument('--namelist_path', default='data/express/namelist_phone.pkl')
-    parser.add_argument('--namelist_type', default=2)
-    parser.add_argument('--exclude_namelist', default='data/express/namelist_test.pkl')
-    args = parser.parse_args()
+    dataset_path = 'data/express/dataset/'
+    info_path = 'data/express/info_express.pkl'
+    namelist_path = 'data/express/namelist_express.pkl'
+    namelist_type = 1
+    exclude_namelist = 'data/express/namelist_test.pkl'
     random.seed(1024)
-    main(args)
+    main(dataset_path, info_path, namelist_path, namelist_type, exclude_namelist)
+
+    # 4
+    dataset_path = 'data/express/dataset/'
+    info_path = 'data/express/info_phone.pkl'
+    namelist_path = 'data/express/namelist_phone.pkl'
+    namelist_type = 2
+    exclude_namelist = 'data/express/namelist_test.pkl'
+    random.seed(1024)
+    main(dataset_path, info_path, namelist_path, namelist_type, exclude_namelist)
