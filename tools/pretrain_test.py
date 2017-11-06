@@ -7,7 +7,7 @@ import numpy as np
 from collections import Counter
 
 import network
-from pretrain_phone import Net
+from pretrain_phone import Net, Net1
 from utils.timer import Timer
 from fast_rcnn.nms_wrapper import nms
 import pprint
@@ -26,7 +26,6 @@ def prepare_roidb(imdb):
 def im_detect(net, image):
 
     im_data = net.get_image_blob(image)
-    # print im_data.shape
     cls_prob = net(im_data)
     scores = cls_prob.data.cpu().numpy()
     return scores
@@ -44,7 +43,7 @@ if __name__ == '__main__':
     imdb_name = 'mnist_test'
     cfg_file = 'experiments/cfgs/train_mnist.yml'
     model_path = 'output/mnist_train/'
-    model_name = 'mnist_2000.h5'
+    model_name = 'mnist_14800.h5'
     trained_model = model_path + model_name
 
     rand_seed = 1024
@@ -71,7 +70,7 @@ if __name__ == '__main__':
     else:
         # load data
         print 'loading model {}'.format(trained_model)
-        net = Net()
+        net = Net1()
         network.load_net(trained_model, net)
         print 'load model successfully!'
 
@@ -85,7 +84,7 @@ if __name__ == '__main__':
         pbar.start()
 
         for i in range(num_images):
-            im = cv2.imread(imdb.image_path_at(i))
+            im = cv2.imread(imdb.image_path_at(i), 0)
             scores = im_detect(net, im)
             all_labels.append(scores)
             pbar.update(i)

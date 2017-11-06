@@ -41,7 +41,7 @@ def prepare_roidb(imdb):
         roidb[i]['image'] = imdb.image_path_at(i)
 
 class Net(nn.Module):
-    def __init__(self, bn=True):
+    def __init__(self, bn=False):
         super(Net, self).__init__()
         self.conv1 = nn.Sequential(Conv2d(3, 64, 3, same_padding=True, bn=bn),
                                    nn.MaxPool2d(2))
@@ -65,7 +65,7 @@ class Net(nn.Module):
         self.conv5 = nn.Sequential(Conv2d(512, 512, 3, same_padding=True, bn=bn),
                                    Conv2d(512, 512, 3, same_padding=True, bn=bn),
                                    Conv2d(512, 512, 3, same_padding=True, bn=bn))
-        self.fc6 = FC(512 * 1 * 3, 256)
+        self.fc6 = FC(512 * 8 * 4, 256)
         self.score_fc = FC(256, 10)
         self.loss = None
         self.cls_prob = None
@@ -86,10 +86,89 @@ class Net(nn.Module):
         self.cls_prob = F.softmax(y)
         return self.cls_prob
 
+class Net1(nn.Module):
+    def __init__(self, bn=False):
+        super(Net1, self).__init__()
+        self.conv1_1 = nn.Conv2d(1, 64, 3, padding=1)
+        self.relu1_1 = nn.ReLU(inplace=True)
+        self.conv1_2 = nn.Conv2d(64, 64, 3, padding=1)
+        self.relu1_2 = nn.ReLU(inplace=True)
+        self.pool1 = nn.MaxPool2d(2, stride=2, ceil_mode=True)
+
+        self.conv2_1 = nn.Conv2d(64, 128, 3, padding=1)
+        self.relu2_1 = nn.ReLU(inplace=True)
+        self.conv2_2 = nn.Conv2d(128, 128, 3, padding=1)
+        self.relu2_2 = nn.ReLU(inplace=True)
+        self.conv2_3 = nn.Conv2d(128, 128, 3, padding=1)
+        self.relu2_3 = nn.ReLU(inplace=True)
+        self.pool2 = nn.MaxPool2d(2, stride=2, ceil_mode=True)
+
+        self.conv3_1 = nn.Conv2d(128, 256, 3, padding=1)
+        self.relu3_1 = nn.ReLU(inplace=True)
+        self.conv3_2 = nn.Conv2d(256, 256, 3, padding=1)
+        self.relu3_2 = nn.ReLU(inplace=True)
+        self.conv3_3 = nn.Conv2d(256, 256, 3, padding=1)
+        self.relu3_3 = nn.ReLU(inplace=True)
+        self.pool3 = nn.MaxPool2d(2, stride=2, ceil_mode=True)
+
+        self.conv4_1 = nn.Conv2d(256, 512, 3, padding=1)
+        self.relu4_1 = nn.ReLU(inplace=True)
+        self.conv4_2 = nn.Conv2d(512, 512, 3, padding=1)
+        self.relu4_2 = nn.ReLU(inplace=True)
+        self.conv4_3 = nn.Conv2d(512, 512, 3, padding=1)
+        self.relu4_3 = nn.ReLU(inplace=True)
+        self.pool4 = nn.MaxPool2d(2, stride=2, ceil_mode=True)
+
+        self.conv5_1 = nn.Conv2d(512, 512, 3, padding=1)
+        self.relu5_1 = nn.ReLU(inplace=True)
+        self.conv5_2 = nn.Conv2d(512, 512, 3, padding=1)
+        self.relu5_2 = nn.ReLU(inplace=True)
+        self.conv5_3 = nn.Conv2d(512, 512, 3, padding=1)
+        self.relu5_3 = nn.ReLU(inplace=True)
+
+        self.fc6 = FC(512 * 8 * 4 , 256)
+        self.score_fc = FC(256, 10)
+        self.loss = None
+        self.cls_prob = None
+
+    def forward(self, im_data, labels=None):
+        im_data = network.np_to_variable(im_data, is_cuda=True)
+        x = self.relu1_1(self.conv1_1(im_data))
+        x = self.relu1_2(self.conv1_2(x))
+        x = self.pool1(x)
+
+        x = self.relu2_1(self.conv2_1(x))
+        x = self.relu2_2(self.conv2_2(x))
+        x = self.relu2_3(self.conv2_3(x))
+        x = self.pool2(x)
+
+        x = self.relu3_1(self.conv3_1(x))
+        x = self.relu3_2(self.conv3_2(x))
+        x = self.relu3_3(self.conv3_3(x))
+        x = self.pool3(x)
+
+        x = self.relu4_1(self.conv4_1(x))
+        x = self.relu4_2(self.conv4_2(x))
+        x = self.relu4_3(self.conv4_3(x))
+        x = self.pool4(x)
+
+        x = self.relu5_1(self.conv5_1(x))
+        x = self.relu5_2(self.conv5_2(x))
+        x = self.relu5_3(self.conv5_3(x))
+
+        x = x.view(x.size()[0], -1)
+        y = self.fc6(x)
+        y = F.dropout(y, training=self.training)
+        y = self.score_fc(y)
+        if self.training:
+            self.loss = F.cross_entropy(y, network.np_to_variable(labels, is_cuda=True, dtype=torch.LongTensor))
+        self.cls_prob = F.softmax(y)
+        return self.cls_prob
+
     def get_image_blob(self, im):
         
         im_orig = im.astype(np.float32, copy=True)
-        im_orig -= cfg.PIXEL_MEANS
+        im_orig -= np.array([104.00698793])
 
         im_shape = im_orig.shape
         im_scale_x = float(cfg.TEST.WIDTH) / float(im_shape[1])
@@ -105,15 +184,14 @@ class Net(nn.Module):
 
         return blob
 
-
     def _im_list_to_blob(self, ims):
         img_shape = ims[0].shape   
         num_images = len(ims)
-        blob = np.zeros((num_images, img_shape[0], img_shape[1], 3),    
+        blob = np.zeros((num_images, img_shape[0], img_shape[1], 1),    
                         dtype=np.float32)           #[nums, h, w, 3]
         for i in xrange(num_images):
             im = ims[i]
-            blob[i, 0:im.shape[0], 0:im.shape[1], :] = im
+            blob[i, 0:im.shape[0], 0:im.shape[1], :] = im[:, :, np.newaxis]
         # Axis order will become: (batch elem, channel, height, width)
         channel_swap = (0, 3, 1, 2)
         blob = blob.transpose(channel_swap)
@@ -122,8 +200,8 @@ class Net(nn.Module):
 def train(net, optimizer, lr):
     print 'starting training'
     start_step = 0
-    end_step = 6000
-    lr_decay_steps = {2000, 3000}
+    end_step = 15000
+    lr_decay_steps = {12000, 14000}
     lr_decay = 1./10
 
     train_loss = 0
@@ -225,7 +303,7 @@ if __name__ == '__main__':
 
     # load net
     print 'init net'
-    net = Net()
+    net = Net1()
     network.weights_normal_init(net)
 
     net.cuda()
