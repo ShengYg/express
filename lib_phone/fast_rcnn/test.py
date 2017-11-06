@@ -217,13 +217,15 @@ def test_net(net, imdb, output_dir, max_per_image=100, thresh=0.05, vis=False):
             for j in xrange(1, imdb.num_classes):
                 inds = np.where(scores[:, j] > thresh)[0]
                 cls_scores = scores[inds, j]
-                cls_boxes = boxes[inds, j*4:(j+1)*4]
+                cls_boxes = None
+                if cfg.TEST.AGNOSTIC:
+                    cls_boxes = boxes[inds, 4:8]
+                else:
+                    cls_boxes = boxes[inds, j*4:(j+1)*4]
                 cls_dets = np.hstack((cls_boxes, cls_scores[:, np.newaxis])) \
                     .astype(np.float32, copy=False)
                 keep = nms(cls_dets, cfg.TEST.NMS)
                 cls_dets = cls_dets[keep, :]
-                if vis:
-                    vis_detections(im, imdb.classes[j], cls_dets)
                 all_boxes[i][j] = cls_dets      #[5 * 1]
 
             # Limit to max_per_image detections *over all classes*

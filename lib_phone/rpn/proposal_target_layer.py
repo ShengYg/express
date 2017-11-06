@@ -52,8 +52,8 @@ class ProposalTargetLayer(caffe.Layer):
 
     def forward(self, bottom, top):
         num_images = cfg.TRAIN.IMS_PER_BATCH
-        rois_per_image = cfg.TRAIN.BATCH_SIZE / num_images
-        fg_rois_per_image = int(np.round(cfg.TRAIN.FG_FRACTION * rois_per_image))
+        rois_per_image = np.inf if cfg.TRAIN.BATCH_SIZE == -1 else cfg.TRAIN.BATCH_SIZE / num_images
+        fg_rois_per_image = np.inf if cfg.TRAIN.BATCH_SIZE == -1 else int(np.round(cfg.TRAIN.FG_FRACTION * rois_per_image))
 
         all_rois = bottom[0].data
         gt_boxes = bottom[1].data
@@ -156,12 +156,20 @@ def _get_bbox_regression_labels(bbox_target_data, num_classes):
     bbox_targets = np.zeros((clss.size, 4 * num_classes), dtype=np.float32)
     bbox_inside_weights = np.zeros(bbox_targets.shape, dtype=np.float32)
     inds = np.where(clss > 0)[0]
-    for ind in inds:
-        cls = int(clss[ind])
-        start = 4 * cls
-        end = start + 4
-        bbox_targets[ind, start:end] = bbox_target_data[ind, 1:]
-        bbox_inside_weights[ind, start:end] = cfg.TRAIN.BBOX_INSIDE_WEIGHTS
+    if cfg.TRAIN.AGNOSTIC:
+        for ind in inds:
+            cls = clss[ind]
+            start = 4 * (1 if cls > 0 else 0)
+            end = start + 4
+            bbox_targets[ind, start:end] = bbox_target_data[ind, 1:]
+            bbox_inside_weights[ind, start:end] = cfg.TRAIN.BBOX_INSIDE_WEIGHTS
+    else:
+        for ind in inds:
+            cls = clss[ind]
+            start = 4 * cls
+            end = start + 4
+            bbox_targets[ind, start:end] = bbox_target_data[ind, 1:]
+            bbox_inside_weights[ind, start:end] = cfg.TRAIN.BBOX_INSIDE_WEIGHTS
     return bbox_targets, bbox_inside_weights
 
 def _compute_targets(ex_rois, gt_rois, labels):
@@ -226,4 +234,6 @@ def _sample_rois(all_rois, gt_boxes, fg_rois_per_image, rois_per_image, num_clas
     # print '============================'
     # print len(fg_inds)
     # print len(bg_inds)
+    # print all_rois.shape[0]
     return labels, rois, bbox_targets, bbox_inside_weights
+

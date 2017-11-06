@@ -58,7 +58,8 @@ def add_bbox_regression_targets(roidb):
 
     num_images = len(roidb)
     # Infer number of classes from the number of columns in gt_overlaps
-    num_classes = roidb[0]['gt_overlaps'].shape[1]
+    num_reg_classes = 2 if cfg.TRAIN.AGNOSTIC else roidb[0]['gt_overlaps'].shape[1]
+    # num_classes = roidb[0]['gt_overlaps'].shape[1]
     for im_i in xrange(num_images):
         rois = roidb[im_i]['boxes']                 # selective_boxes * 4
         max_overlaps = roidb[im_i]['max_overlaps']
@@ -69,19 +70,20 @@ def add_bbox_regression_targets(roidb):
     if cfg.TRAIN.BBOX_NORMALIZE_TARGETS_PRECOMPUTED:
         # Use fixed / precomputed "means" and "stds" instead of empirical values
         means = np.tile(
-                np.array(cfg.TRAIN.BBOX_NORMALIZE_MEANS), (num_classes, 1))
+                np.array(cfg.TRAIN.BBOX_NORMALIZE_MEANS), (num_reg_classes, 1))
         stds = np.tile(
-                np.array(cfg.TRAIN.BBOX_NORMALIZE_STDS), (num_classes, 1))
+                np.array(cfg.TRAIN.BBOX_NORMALIZE_STDS), (num_reg_classes, 1))
     else:
         # Compute values needed for means and stds
         # var(x) = E(x^2) - E(x)^2
-        class_counts = np.zeros((num_classes, 1)) + cfg.EPS
-        sums = np.zeros((num_classes, 4))
-        squared_sums = np.zeros((num_classes, 4))
+        class_counts = np.zeros((num_reg_classes, 1)) + cfg.EPS
+        sums = np.zeros((num_reg_classes, 4))
+        squared_sums = np.zeros((num_reg_classes, 4))
         for im_i in xrange(num_images):
             targets = roidb[im_i]['bbox_targets']
-            for cls in xrange(1, num_classes):
-                cls_inds = np.where(targets[:, 0] == cls)[0]
+            for cls in xrange(1, num_reg_classes):
+                cls_inds = np.where(targets[:, 0] > 0)[0] if cfg.TRAIN.AGNOSTIC \
+                    else np.where(targets[:, 0] == cls)[0]
                 if cls_inds.size > 0:
                     class_counts[cls] += cls_inds.size
                     sums[cls, :] += targets[cls_inds, 1:].sum(axis=0)
@@ -103,8 +105,9 @@ def add_bbox_regression_targets(roidb):
         print "Normalizing targets"
         for im_i in xrange(num_images):
             targets = roidb[im_i]['bbox_targets']
-            for cls in xrange(1, num_classes):
-                cls_inds = np.where(targets[:, 0] == cls)[0]
+            for cls in xrange(1, num_reg_classes):
+                cls_inds = np.where(targets[:, 0] > 0) if cfg.TRAIN.AGNOSTIC \
+                    else np.where(targets[:, 0] == cls)[0]
                 roidb[im_i]['bbox_targets'][cls_inds, 1:] -= means[cls, :]
                 roidb[im_i]['bbox_targets'][cls_inds, 1:] /= stds[cls, :]
     else:
