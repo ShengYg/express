@@ -29,11 +29,11 @@ class PhoneSegBase(data.Dataset):
     # mean_bgr = np.array([104.00698793, 116.66876762, 122.67891434])
     mean_bgr = np.array([104.00698793])
 
-    def __init__(self, root, split='train', transform=False):
+    def __init__(self, root, split='train', transform=False, resize=False):
         self.root = root
         self.split = split
         self._transform = transform
-        self._resize_shape = (480, 96)  # (w, h)
+        self._resize_shape = (640, 128)  # (w, h)
         self.resize = resize
 
         dataset_dir = os.path.join(self.root, 'images')
@@ -108,7 +108,7 @@ class PhoneSeg(PhoneSegBase):
         self.root = root
         self.split = split
         self._transform = transform
-        self._resize_shape = (480, 96)  # (w, h)
+        self._resize_shape = (640, 128)  # (w, h)
         self.resize = resize
 
         dataset_dir = os.path.join(self.root, 'images')

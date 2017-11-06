@@ -12,7 +12,7 @@ import tqdm
 from tensorboard_logger import configure, log_value
 
 from utils import label_accuracy_score
-from fcn32s import FCN32s
+from network import FCN32s, Front_end, Context
 
 def cross_entropy2d(input, target, weight=None, size_average=True):
     # input: (n, c, h, w), target: (n, h, w)
@@ -43,7 +43,10 @@ def get_parameters(model, bias=False):
         nn.MaxPool2d,
         nn.Dropout2d,
         nn.Sequential,
-        FCN32s
+        FCN32s,
+        Front_end,
+        Context,
+        nn.Upsample,
     )
     for m in model.modules():
         if isinstance(m, nn.Conv2d):
@@ -137,10 +140,8 @@ class Trainer(object):
             data, target = Variable(data), Variable(target)
             self.optim.zero_grad()
             score = self.model(data)
+            loss = cross_entropy2d(score, target, size_average=self.size_average)
 
-            loss = cross_entropy2d(score, target,
-                                   size_average=self.size_average)
-            # loss /= len(data)
             if np.isnan(float(loss.data[0])):
                 raise ValueError('loss is nan while training')
             loss.backward()
