@@ -53,10 +53,10 @@ class MnistDataLayer(object):
         num_images = len(roidb)
         processed_ims = []
         for i in xrange(num_images):
-            im = cv2.imread(roidb[i]['image'])
+            im = cv2.imread(roidb[i]['image'], 0)
             if roidb[i]['flipped']:
                 im = im[:, ::-1, :]
-            im = self._prep_im_for_blob(im, cfg.PIXEL_MEANS)
+            im = self._prep_im_for_blob(im, np.array([104.00698793]))
             processed_ims.append(im)
 
         # Create a blob to hold the input images
@@ -68,11 +68,11 @@ class MnistDataLayer(object):
     def _im_list_to_blob(self, ims):
         img_shape = ims[0].shape   
         num_images = len(ims)   # 3
-        blob = np.zeros((num_images, img_shape[0], img_shape[1], 3),    
+        blob = np.zeros((num_images, img_shape[0], img_shape[1], 1),    
                         dtype=np.float32)           #[nums, h, w, 3]
         for i in xrange(num_images):
             im = ims[i]
-            blob[i, 0:im.shape[0], 0:im.shape[1], :] = im
+            blob[i, 0:im.shape[0], 0:im.shape[1], :] = im[:, :, np.newaxis]
         # Move channels (axis 3) to axis 1
         # Axis order will become: (batch elem, channel, height, width)
         channel_swap = (0, 3, 1, 2)
@@ -92,7 +92,7 @@ class MnistDataLayer(object):
                         interpolation=cv2.INTER_LINEAR)
         x = np.random.randint(0, cfg.TRAIN.WIDTH / 24.0 + 1)
         y = np.random.randint(0, cfg.TRAIN.HEIGHT / 8.0 + 1)
-        crop_img = im[y:y+cfg.TRAIN.HEIGHT, x:x+cfg.TRAIN.WIDTH, :]
+        crop_img = im[y:y+cfg.TRAIN.HEIGHT, x:x+cfg.TRAIN.WIDTH,]
 
         return crop_img
 
