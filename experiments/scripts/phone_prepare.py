@@ -21,7 +21,7 @@ def random_crop(x, y, w, h, length):
     h += float(h) / 8
     return max(int(x), 0), max(int(y), 0), int(w), int(h)
 
-def main(args):
+def main(root_dir, info_name, namelist_name, output_dir, prepare):
     if not os.path.isdir(os.path.join(output_dir, 'images')):
         os.makedirs(os.path.join(output_dir, 'images'))
 
@@ -218,25 +218,25 @@ if __name__ == '__main__':
     output_dir = 'data/express/pretrain_mnist'
     prepare = 'num'
     random.seed(1024)
-    main(args)
+    main(root_dir, info_name, namelist_name, output_dir, prepare)
 
-    # train phone
-    root_dir = 'data/express/dataset'
-    info_name = 'info_phone.pkl'
-    namelist_name = 'namelist_phone.pkl'
-    output_dir = 'data/express/pretrain_db_benchmark'
-    prepare = 'phone'
-    random.seed(1024)
-    main(args)
+    # # train phone
+    # root_dir = 'data/express/dataset'
+    # info_name = 'info_phone.pkl'
+    # namelist_name = 'namelist_phone.pkl'
+    # output_dir = 'data/express/pretrain_db_benchmark'
+    # prepare = 'phone'
+    # random.seed(1024)
+    # main(root_dir, info_name, namelist_name, output_dir, prepare)
 
-    # test phone
-    root_dir = 'data/express/dataset'
-    info_name = 'info_test.pkl'
-    namelist_name = 'namelist_test.pkl'
-    output_dir = 'data/express/test_db_benchmark'
-    prepare = 'phone'
-    random.seed(1024)
-    main(args)
+    # # test phone
+    # root_dir = 'data/express/dataset'
+    # info_name = 'info_test.pkl'
+    # namelist_name = 'namelist_test.pkl'
+    # output_dir = 'data/express/test_db_benchmark'
+    # prepare = 'phone'
+    # random.seed(1024)
+    # main(root_dir, info_name, namelist_name, output_dir, prepare)
 
     # train extra phone
     # root_dir = 'data/express/dataset'
@@ -245,4 +245,4 @@ if __name__ == '__main__':
     # output_dir = 'data/express/pretrain_db_benchmark_extra'
     # prepare = 'phone_extra'
     # random.seed(1024)
-    # main(args)
+    # main(root_dir, info_name, namelist_name, output_dir, prepare)
