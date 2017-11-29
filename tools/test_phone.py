@@ -43,7 +43,7 @@ if __name__ == '__main__':
     # hyper-parameters
     imdb_name = 'phone_test'
     cfg_file = 'experiments/cfgs/train_phone.yml'
-    model_path = 'output/phone_train/'
+    model_path = 'output/phone_out/'
     model_name = 'phone_56000.h5'
     trained_model = model_path + model_name
 
@@ -59,7 +59,7 @@ if __name__ == '__main__':
     # print 'Using config:'
     # pprint.pprint(cfg)
 
-    imdb = get_imdb(imdb_name, os.path.join(cfg.DATA_DIR, 'express', 'test_db_benchmark'), ratio=0.)
+    imdb = get_imdb(imdb_name, os.path.join(cfg.DATA_DIR, 'express', 'pretrain_db_benchmark'), ratio=0.8)
     # imdb = get_imdb(imdb_name, os.path.join(cfg.DATA_DIR, 'express', 'pretrain_db_benchmark_extra'), ratio=0.8)
     roidb = prepare_roidb(imdb)
 

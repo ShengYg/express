@@ -5,7 +5,7 @@ from utils.timer import Timer
 import numpy as np
 import cv2
 import caffe
-from fast_rcnn.nms_wrapper import nms
+from fast_rcnn.nms_wrapper import nms, nms_1d
 import cPickle
 from utils.blob import im_list_to_blob
 import os
@@ -225,8 +225,9 @@ def test_net(net, imdb, output_dir, max_per_image=100, thresh=0.05, vis=False):
                 cls_dets = np.hstack((cls_boxes, cls_scores[:, np.newaxis])) \
                     .astype(np.float32, copy=False)
                 keep = nms(cls_dets, cfg.TEST.NMS)
+                # keep = nms_1d(cls_dets, cfg.TEST.NMS)
                 cls_dets = cls_dets[keep, :]
-                all_boxes[i][j] = cls_dets      #[5 * 1]
+                all_boxes[i][j] = cls_dets
 
             # Limit to max_per_image detections *over all classes*
             if max_per_image > 0:

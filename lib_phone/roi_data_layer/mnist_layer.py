@@ -84,17 +84,13 @@ class MnistDataLayer(object):
         im = im.astype(np.float32, copy=False)
         im -= pixel_means
         im_shape = im.shape
-        im_scale_x = float(cfg.TRAIN.WIDTH) / float(im_shape[1]) * float(25) / float(24)
-        im_scale_y = float(cfg.TRAIN.HEIGHT) / float(im_shape[0]) * float(9) / float(8)
+        im_scale_x = float(cfg.TRAIN.WIDTH) / float(im_shape[1])
+        im_scale_y = float(cfg.TRAIN.HEIGHT) / float(im_shape[0])
 
         
         im = cv2.resize(im, None, None, fx=im_scale_x, fy=im_scale_y,
                         interpolation=cv2.INTER_LINEAR)
-        x = np.random.randint(0, cfg.TRAIN.WIDTH / 24.0 + 1)
-        y = np.random.randint(0, cfg.TRAIN.HEIGHT / 8.0 + 1)
-        crop_img = im[y:y+cfg.TRAIN.HEIGHT, x:x+cfg.TRAIN.WIDTH, :]
-
-        return crop_img
+        return im
 
     def forward(self):
         """Get blobs and copy them into this layer's top blob vector."""

@@ -67,7 +67,7 @@ class Trainer(object):
 
     def __init__(self, cuda, model,
                  train_loader, out,
-                 size_average=False, cfg=None):
+                 size_average=False, cfg=None, pos=False):
         self.cuda = cuda
         self.model = model
         self.train_loader = train_loader
@@ -75,6 +75,7 @@ class Trainer(object):
         if not os.path.exists(self.out):
             os.makedirs(self.out)
         self.size_average = size_average
+        self.pos = pos
 
         self.cfg = cfg
         self.lr = cfg['lr']
@@ -83,11 +84,25 @@ class Trainer(object):
         self.log_interval = cfg['log_interval']
         self.lr_decay_interval = cfg['lr_decay_interval']
 
+        # self.optim = torch.optim.SGD(
+        #         [
+        #             {'params': list(get_parameters(self.model, bias=True))[:13],
+        #              'lr': 0, 'weight_decay': 0},
+        #             {'params': list(get_parameters(self.model, bias=False))[:13],
+        #              'lr': 0, 'weight_decay': 0},
+        #             {'params': list(get_parameters(self.model, bias=True))[13:],
+        #              'lr': self.lr * 2, 'weight_decay': 0},
+        #             {'params': list(get_parameters(self.model, bias=False))[13:]},
+        #         ],
+        #         lr=self.lr,
+        #         momentum=cfg['momentum'],
+        #         weight_decay=cfg['weight_decay']
+        #     )
         self.optim = torch.optim.SGD(
                 [
-                    {'params': get_parameters(self.model, bias=False)},
-                    {'params': get_parameters(self.model, bias=True),
+                    {'params': list(get_parameters(self.model, bias=True)),
                      'lr': self.lr * 2, 'weight_decay': 0},
+                    {'params': list(get_parameters(self.model, bias=False))},
                 ],
                 lr=self.lr,
                 momentum=cfg['momentum'],
@@ -102,6 +117,7 @@ class Trainer(object):
             'iteration',
             'lr',
             'train/loss',
+            'train/loss_pos',
             'train/acc',
             'train/acc_cls',
             'train/mean_iu',
@@ -127,7 +143,7 @@ class Trainer(object):
 
         n_class = len(self.train_loader.dataset.class_names)
 
-        for batch_idx, (data, target) in tqdm.tqdm(
+        for batch_idx, (data, target, target_pos) in tqdm.tqdm(
                 enumerate(self.train_loader), total=len(self.train_loader),
                 desc='Train epoch=%d' % self.epoch, ncols=80, leave=False):
             iteration = batch_idx + self.epoch * len(self.train_loader)
@@ -137,11 +153,17 @@ class Trainer(object):
 
             if self.cuda:
                 data, target = data.cuda(), target.cuda()
+                if self.pos:
+                    target_pos = target_pos.cuda()
             data, target = Variable(data), Variable(target)
+            if self.pos:
+                target_pos =  Variable(target_pos)
             self.optim.zero_grad()
-            score = self.model(data)
+            score, score_pos = self.model(data)
             loss = cross_entropy2d(score, target, size_average=self.size_average)
-
+            if self.pos:
+                loss2 = cross_entropy2d(score_pos, target_pos, size_average=self.size_average)
+                loss += loss2
             if np.isnan(float(loss.data[0])):
                 raise ValueError('loss is nan while training')
             loss.backward()
@@ -149,6 +171,8 @@ class Trainer(object):
 
             if self.iteration % self.log_interval == 0:
                 log_value('loss', loss.data[0], self.iteration)
+                if self.pos:
+                    log_value('loss_pos', loss2.data[0], self.iteration)
                 metrics = []
                 lbl_pred = score.data.max(1)[1].cpu().numpy()[:, :, :]
                 lbl_true = target.data.cpu().numpy()
@@ -162,8 +186,12 @@ class Trainer(object):
                     elapsed_time = (
                         datetime.datetime.now() -
                         self.timestamp_start).total_seconds()
-                    log = [self.epoch, self.iteration] + [self.lr] + [loss.data[0]] + \
-                        metrics.tolist() + [''] * 5 + [elapsed_time]
+                    log = [self.epoch, self.iteration] + [self.lr] + [loss.data[0]]
+                    if self.pos:
+                        log += [loss2.data[0]]
+                    else:
+                        log += [None]
+                    log += metrics.tolist() + [''] * 5 + [elapsed_time]
                     log = map(str, log)
                     f.write(','.join(log) + '\n')
 
@@ -176,15 +204,30 @@ class Trainer(object):
 
             if self.iteration in self.lr_decay_interval:
                 self.lr /= 10
+                
+                # self.optim = torch.optim.SGD(
+                #     [
+                #         {'params': list(get_parameters(self.model, bias=True))[:13],
+                #          'lr': 0, 'weight_decay': 0},
+                #         {'params': list(get_parameters(self.model, bias=False))[:13],
+                #          'lr': 0, 'weight_decay': 0},
+                #         {'params': list(get_parameters(self.model, bias=True))[13:],
+                #          'lr': self.lr * 2, 'weight_decay': 0},
+                #         {'params': list(get_parameters(self.model, bias=False))[13:]},
+                #     ],
+                #     lr=self.lr,
+                #     momentum=cfg['momentum'],
+                #     weight_decay=cfg['weight_decay']
+                # )
                 self.optim = torch.optim.SGD(
                     [
-                        {'params': get_parameters(self.model, bias=False)},
-                        {'params': get_parameters(self.model, bias=True),
+                        {'params': list(get_parameters(self.model, bias=True)),
                          'lr': self.lr * 2, 'weight_decay': 0},
+                        {'params': list(get_parameters(self.model, bias=False))},
                     ],
                     lr=self.lr,
-                    momentum=self.cfg['momentum'],
-                    weight_decay=self.cfg['weight_decay']
+                    momentum=cfg['momentum'],
+                    weight_decay=cfg['weight_decay']
                 )
 
     def train(self):

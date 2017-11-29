@@ -212,33 +212,33 @@ def main(root_dir, info_name, namelist_name, output_dir, prepare):
 
 if __name__ == '__main__':
     # mnist
-    root_dir = 'data/express/dataset'
-    info_name = 'info_phone.pkl'
-    namelist_name = 'namelist_phone.pkl'
-    output_dir = 'data/express/pretrain_mnist'
-    prepare = 'num'
-    random.seed(1024)
-    main(root_dir, info_name, namelist_name, output_dir, prepare)
-
-    # # train phone
     # root_dir = 'data/express/dataset'
     # info_name = 'info_phone.pkl'
     # namelist_name = 'namelist_phone.pkl'
-    # output_dir = 'data/express/pretrain_db_benchmark'
-    # prepare = 'phone'
+    # output_dir = 'data/express/pretrain_mnist'
+    # prepare = 'num'
     # random.seed(1024)
     # main(root_dir, info_name, namelist_name, output_dir, prepare)
 
-    # # test phone
-    # root_dir = 'data/express/dataset'
-    # info_name = 'info_test.pkl'
-    # namelist_name = 'namelist_test.pkl'
-    # output_dir = 'data/express/test_db_benchmark'
-    # prepare = 'phone'
-    # random.seed(1024)
-    # main(root_dir, info_name, namelist_name, output_dir, prepare)
+    # train phone
+    root_dir = 'data/express/dataset'
+    info_name = 'info_phone.pkl'
+    namelist_name = 'namelist_phone.pkl'
+    output_dir = 'data/express/pretrain_db_benchmark'
+    prepare = 'phone'
+    random.seed(1024)
+    main(root_dir, info_name, namelist_name, output_dir, prepare)
 
-    # train extra phone
+    # test phone
+    root_dir = 'data/express/dataset'
+    info_name = 'info_test.pkl'
+    namelist_name = 'namelist_test.pkl'
+    output_dir = 'data/express/test_db_benchmark'
+    prepare = 'phone'
+    random.seed(1024)
+    main(root_dir, info_name, namelist_name, output_dir, prepare)
+
+    # # train extra phone
     # root_dir = 'data/express/dataset'
     # info_name = 'info_phone.pkl'
     # namelist_name = 'namelist_phone.pkl'

@@ -13,7 +13,7 @@ export PYTHONUNBUFFERED="True"
 
 GPU_ID=0
 NET="VGG16"
-DATASET=phone
+DATASET=express
 
 
 case $DATASET in
@@ -41,29 +41,11 @@ LOG="experiments/logs/${DATASET}_train_${NET}_${EXTRA_ARGS_SLUG}.txt.`date +'%Y-
 exec &> >(tee -a "$LOG")
 echo Logging output to "$LOG"
 
+# LOG="experiments/logs/phone_train.txt.`date +'%Y-%m-%d_%H-%M-%S'`"
+# python tools/pretrain_mnist.py all 2>&1 | tee "$LOG"
 
-time python tools/train_net.py --gpu ${GPU_ID} \
-  --solver models/${PT_DIR}/${NET}/solver.prototxt \
-  --imdb ${TRAIN_IMDB} \
-  --iters ${ITERS} \
-  --cfg experiments/cfgs/${YML} \
-  ${EXTRA_ARGS}
 
-set +x
-NET_FINAL=`grep -B 1 "done solving" ${LOG} | grep "Wrote snapshot" | awk '{print $4}'`
-set -x
-
-NET_FINAL="output/express_train/express_iter_25000.caffemodel"
-time python tools/test_net.py --gpu ${GPU_ID} \
-  --net ${NET_FINAL} \
-  --test_def models/${PT_DIR}/${NET}/test.prototxt \
-  --imdb ${TEST_IMDB} \
-  --cfg experiments/cfgs/${YML} \
-  ${EXTRA_ARGS}
-
-####################################################################################################
-
-# time python tools/train_net.py --gpu ${GPU_ID} \
+# python tools/train_net.py --gpu ${GPU_ID} \
 #   --solver models/${PT_DIR}/${NET}/solver.prototxt \
 #   --imdb ${TRAIN_IMDB} \
 #   --iters ${ITERS} \
@@ -74,9 +56,31 @@ time python tools/test_net.py --gpu ${GPU_ID} \
 # NET_FINAL=`grep -B 1 "done solving" ${LOG} | grep "Wrote snapshot" | awk '{print $4}'`
 # set -x
 
+NET_FINAL="output/express_train/express_iter_25000.caffemodel"
+python tools/test_net.py --gpu ${GPU_ID} \
+  --net ${NET_FINAL} \
+  --test_def models/${PT_DIR}/${NET}/test.prototxt \
+  --imdb ${TEST_IMDB} \
+  --cfg experiments/cfgs/${YML} \
+  ${EXTRA_ARGS}
 
-# NET_FINAL="output/phone_train/phone_ohem_iter_40000.caffemodel"
-# time python tools/test_net.py --gpu ${GPU_ID} \
+####################################################################################################
+
+# python tools/train_net.py --gpu ${GPU_ID} \
+#   --solver models/${PT_DIR}/${NET}/solver.prototxt \
+#   --imdb ${TRAIN_IMDB} \
+#   --iters ${ITERS} \
+#   --cfg experiments/cfgs/${YML} \
+#   --weights output/mnist_out/mnist_iter_10000.caffemodel
+#   ${EXTRA_ARGS}
+
+# set +x
+# NET_FINAL=`grep -B 1 "done solving" ${LOG} | grep "Wrote snapshot" | awk '{print $4}'`
+# set -x
+
+
+# NET_FINAL="output/phone_out/phone_iter_60000.caffemodel"
+# python tools/test_net.py --gpu ${GPU_ID} \
 #   --net ${NET_FINAL} \
 #   --test_def models/${PT_DIR}/${NET}/test.prototxt \
 #   --imdb ${TEST_IMDB} \

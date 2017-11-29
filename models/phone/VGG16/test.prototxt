@@ -126,10 +126,63 @@ layer {
   bottom: "conv2_2"
   top: "conv2_2"
 }
+
+layer {
+  name: "conv2_3"
+  type: "Convolution"
+  bottom: "conv2_2"
+  top: "conv2_3"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  convolution_param {
+    num_output: 128
+    pad: 1
+    kernel_size: 3
+    weight_filler { type: "xavier" }
+    bias_filler { type: "constant" value: 0 }
+  }
+}
+layer {
+  name: "relu2_3"
+  type: "ReLU"
+  bottom: "conv2_3"
+  top: "conv2_3"
+}
+
+layer {
+  name: "conv2_4"
+  type: "Convolution"
+  bottom: "conv2_3"
+  top: "conv2_4"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  convolution_param {
+    num_output: 128
+    pad: 1
+    kernel_size: 3
+    weight_filler { type: "xavier" }
+    bias_filler { type: "constant" value: 0 }
+  }
+}
+layer {
+  name: "relu2_4"
+  type: "ReLU"
+  bottom: "conv2_4"
+  top: "conv2_4"
+}
+
 layer {
   name: "pool2"
   type: "Pooling"
-  bottom: "conv2_2"
+  bottom: "conv2_4"
   top: "pool2"
   pooling_param {
     pool: MAX
@@ -212,6 +265,31 @@ layer {
   bottom: "conv3_3"
   top: "conv3_3"
 }
+layer {
+  name: "conv3_4"
+  type: "Convolution"
+  bottom: "conv3_3"
+  top: "conv3_4"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  convolution_param {
+    num_output: 256
+    pad: 1
+    kernel_size: 3
+    weight_filler { type: "xavier" }
+    bias_filler { type: "constant" value: 0 }
+  }
+}
+layer {
+  name: "relu3_4"
+  type: "ReLU"
+  bottom: "conv3_4"
+  top: "conv3_4"
+}
 
 
 #========= RPN ============
@@ -219,7 +297,7 @@ layer {
 layer {
   name: "rpn_conv/3x3"
   type: "Convolution"
-  bottom: "conv3_3"
+  bottom: "conv3_4"
   top: "rpn/output"
   param { lr_mult: 1.0 }
   param { lr_mult: 2.0 }
@@ -312,7 +390,7 @@ layer {
 layer {
   name: "roi_pool"
   type: "ROIPooling"
-  bottom: "conv3_3"
+  bottom: "conv3_4"
   bottom: "rois"
   top: "pool"
   roi_pooling_param {
@@ -322,10 +400,10 @@ layer {
   }
 }
 layer {
-  name: "fc6"
+  name: "fc1"
   type: "InnerProduct"
   bottom: "pool"
-  top: "fc6"
+  top: "fc1"
   param {
     lr_mult: 1
   }
@@ -339,25 +417,25 @@ layer {
   }
 }
 layer {
-  name: "relu6"
+  name: "relu1"
   type: "ReLU"
-  bottom: "fc6"
-  top: "fc6"
+  bottom: "fc1"
+  top: "fc1"
 }
 layer {
-  name: "drop6"
+  name: "drop1"
   type: "Dropout"
-  bottom: "fc6"
-  top: "fc6"
+  bottom: "fc1"
+  top: "fc1"
   dropout_param {
     dropout_ratio: 0.5
   }
 }
 layer {
-  name: "fc7"
+  name: "fc2"
   type: "InnerProduct"
-  bottom: "fc6"
-  top: "fc7"
+  bottom: "fc1"
+  top: "fc2"
   param {
     lr_mult: 1
   }
@@ -371,16 +449,16 @@ layer {
   }
 }
 layer {
-  name: "relu7"
+  name: "relu2"
   type: "ReLU"
-  bottom: "fc7"
-  top: "fc7"
+  bottom: "fc2"
+  top: "fc2"
 }
 layer {
-  name: "drop7"
+  name: "drop2"
   type: "Dropout"
-  bottom: "fc7"
-  top: "fc7"
+  bottom: "fc2"
+  top: "fc2"
   dropout_param {
     dropout_ratio: 0.5
   }
@@ -388,7 +466,7 @@ layer {
 layer {
   name: "cls_score"
   type: "InnerProduct"
-  bottom: "fc7"
+  bottom: "fc2"
   top: "cls_score"
   param {
     lr_mult: 1
@@ -403,28 +481,16 @@ layer {
   }
 }
 layer {
-  name: "cls_prob_pre"
+  name: "cls_prob"
   type: "Softmax"
   bottom: "cls_score"
-  top: "cls_prob_pre"
+  top: "cls_prob"
 }
 layer {
-    name: "cls_prob_reshape"
-    type: "Reshape"
-    bottom: "cls_prob_pre"
-    top: "cls_prob"
-    reshape_param {
-        shape {
-            dim: -1
-            dim: 11
-        }
-    }
-}
-layer {
-  name: "bbox_pred_pre"
+  name: "bbox_pred"
   type: "InnerProduct"
-  bottom: "fc7"
-  top: "bbox_pred_pre"
+  bottom: "fc2"
+  top: "bbox_pred"
   param {
     lr_mult: 1
   }
@@ -432,20 +498,8 @@ layer {
     lr_mult: 2
   }
   inner_product_param {
-    num_output: 8
+    num_output: 44
     weight_filler { type: "xavier" }
     bias_filler { type: "constant" value: 0 }
   }
-}
-layer {
-    name: "bbox_pred_reshape"
-    type: "Reshape"
-    bottom: "bbox_pred_pre"
-    top: "bbox_pred"
-    reshape_param {
-        shape {
-            dim: -1
-            dim: 8
-        }
-    }
 }

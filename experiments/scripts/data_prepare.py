@@ -348,6 +348,7 @@ def main(dataset_path, info_path, namelist_path, namelist_type=0, exclude_nameli
                                 continue
                             if len(ind) != len(gt_phone[key]):
                                 continue
+                            num_box = [boxes[j] for j in range(len(boxes)) if ind[j]]
                             namelist.append(num + '.jpg')
                             info_all[num + '.jpg'] = [phone_box, phone_label]
                             sourcefile = dataset_path + num + '.jpg'
@@ -357,6 +358,7 @@ def main(dataset_path, info_path, namelist_path, namelist_type=0, exclude_nameli
                                 img = Image.open(sourcefile)
                                 img_size = img.size
                                 info_all[num + '.jpg'].append(img_size)
+                            info_all[num + '.jpg'].append(num_box)
 
             i += 1
             pbar.update(i)

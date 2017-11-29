@@ -119,6 +119,7 @@ class phone(imdb):
         each_length = [0] * 8
         phone_right_each = [0] * 8
         tp, num, tlength, phone_right = 0, 0, 0, 0
+        tlength_list = []
         tp_arr = np.zeros((12, ))
         all_arr = np.zeros((12, ))
         extra_tp, extra_num = 0, 0
@@ -140,6 +141,7 @@ class phone(imdb):
                 res = np.hstack([res, np.array([10]*(gt_labels.shape[0]-res.shape[0]))])
             else:
                 tlength += 1
+                tlength_list.append(test_image_num)
                 each_length[gt_labels.shape[0]-5] += 1
             
             num += gt_labels.shape[0]
@@ -171,6 +173,8 @@ class phone(imdb):
         print 'right: {}'.format(tp_arr)
         print 'all  : {}'.format(all_arr)
         print 'acc  : {}'.format(tp_arr.astype(np.float32) / all_arr)
+
+        # print sorted(list(set(range(len(gt_roidb))) - set(tlength_list)))
 
             
 

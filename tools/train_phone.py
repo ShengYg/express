@@ -75,7 +75,7 @@ if __name__ == '__main__':
 
     # load data
     # imdb = get_imdb(imdb_name)
-    imdb = get_imdb(imdb_name, os.path.join(cfg.DATA_DIR, 'express', 'pretrain_db_benchmark'), ratio=1.0)
+    imdb = get_imdb(imdb_name, os.path.join(cfg.DATA_DIR, 'express', 'pretrain_db_benchmark'), ratio=0.8)
     prepare_roidb(imdb)
     roidb = imdb.roidb
     print 'roidb length: {}'.format(len(roidb))
@@ -88,7 +88,7 @@ if __name__ == '__main__':
         net = PhoneNet(classes=imdb.classes, bn=True)
         network.weights_normal_init(net)
 
-        model_file = 'output/mnist_train/mnist_2200.h5'
+        model_file = 'output/mnist_out/mnist_2200.h5'
         network.load_pretrain_net(model_file, net, num=17*6)
 
         net.cuda()
@@ -101,7 +101,7 @@ if __name__ == '__main__':
         net = PhoneNet(classes=imdb.classes, bn=False)
         network.weights_normal_init(net)
 
-        model_file = 'output/mnist_train/mnist_4200_no_bn.h5'
+        model_file = 'output/mnist_out/mnist_4200_no_bn.h5'
         network.load_pretrain_net(model_file, net, num=17*2)
 
         net.cuda()

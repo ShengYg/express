@@ -65,8 +65,10 @@
 *.caffemodel
 *.solverstate
 
+*.tar.gz
 *.log
 *.pyx
+*.json
 experiments/logs/
 data/
 output/

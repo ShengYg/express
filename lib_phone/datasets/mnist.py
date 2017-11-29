@@ -93,14 +93,15 @@ class mnist(imdb):
     def _get_default_path(self):
         return os.path.join(cfg.DATA_DIR, 'express', 'pretrain_mnist')
 
-    def evaluate_detections(self, all_labels, output_dir):
-        gt_roidb = self.gt_roidb()
+    def evaluate_detections(self, all_labels, output_dir, roidb):
+        gt_roidb = roidb
         assert len(all_labels) == len(gt_roidb)
 
         tp = 0
         for gt, det in zip(gt_roidb, all_labels):
             gt_label = gt['labels']
-            det_label = np.argmax(det)
+            # det_label = np.argmax(det)
+            det_label = det
             if gt_label == det_label:
                 tp += 1
         print 'right digits: {} / {} = {:.4f}'.format(tp, len(gt_roidb), float(tp) / float(len(gt_roidb)))

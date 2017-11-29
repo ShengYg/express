@@ -134,7 +134,7 @@ class FCN32s(nn.Module):
 
 class Front_end(nn.Module):
 
-    def __init__(self, n_class=11):
+    def __init__(self, n_class=11, pos=False):
         super(Front_end, self).__init__()
         # conv1
         self.conv1_1 = nn.Conv2d(1, 64, 3, padding=1)
@@ -165,18 +165,25 @@ class Front_end(nn.Module):
         self.conv4_3 = nn.Conv2d(512, 512, 3, padding=2, dilation=2)
         self.relu4_3 = nn.ReLU(inplace=True)
 
-        # fc6
         self.fc6 = nn.Conv2d(512, 1024, 3, padding=4, dilation=4)
         self.relu6 = nn.ReLU(inplace=True)
         self.drop6 = nn.Dropout2d()
-        # fc7
         self.fc7 = nn.Conv2d(1024, 1024, 1)
         self.relu7 = nn.ReLU(inplace=True)
         self.drop7 = nn.Dropout2d()
-
         self.final = nn.Conv2d(1024, n_class, 1)
-        # self.upsample = nn.UpsamplingBilinear2d(scale_factor=4)
         self.upsample = nn.Upsample(scale_factor=4, mode='bilinear')
+
+        self.pos = pos
+        if self.pos:
+            self.fc6_pos = nn.Conv2d(512, 1024, 3, padding=4, dilation=4)
+            self.relu6_pos = nn.ReLU(inplace=True)
+            self.drop6_pos = nn.Dropout2d()
+            self.fc7_pos = nn.Conv2d(1024, 1024, 1)
+            self.relu7_pos = nn.ReLU(inplace=True)
+            self.drop7_pos = nn.Dropout2d()
+            self.final_pos = nn.Conv2d(1024, 13, 1)
+            self.upsample_pos = nn.Upsample(scale_factor=4, mode='bilinear')
 
         self._initialize_weights()
 
@@ -196,34 +203,39 @@ class Front_end(nn.Module):
                 m.bias.data.zero_()
 
     def forward(self, x):
-        h = x
+        x = self.relu1_1(self.conv1_1(x))
+        x = self.relu1_2(self.conv1_2(x))
+        x = self.pool1(x)
 
-        h = self.relu1_1(self.conv1_1(h))
-        h = self.relu1_2(self.conv1_2(h))
-        h = self.pool1(h)
+        x = self.relu2_1(self.conv2_1(x))
+        x = self.relu2_2(self.conv2_2(x))
+        x = self.relu2_3(self.conv2_3(x))
+        x = self.pool2(x)
 
-        h = self.relu2_1(self.conv2_1(h))
-        h = self.relu2_2(self.conv2_2(h))
-        h = self.relu2_3(self.conv2_3(h))
-        h = self.pool2(h)
+        x = self.relu3_1(self.conv3_1(x))
+        x = self.relu3_2(self.conv3_2(x))
+        x = self.relu3_3(self.conv3_3(x))
+        x = self.relu4_1(self.conv4_1(x))
+        x = self.relu4_2(self.conv4_2(x))
+        x = self.relu4_3(self.conv4_3(x))
 
-        h = self.relu3_1(self.conv3_1(h))
-        h = self.relu3_2(self.conv3_2(h))
-        h = self.relu3_3(self.conv3_3(h))
-        h = self.relu4_1(self.conv4_1(h))
-        h = self.relu4_2(self.conv4_2(h))
-        h = self.relu4_3(self.conv4_3(h))
+        h1 = self.relu6(self.fc6(x))
+        h1 = self.drop6(h1)
+        h1 = self.relu7(self.fc7(h1))
+        h1 = self.drop7(h1)
+        h1 = self.final(h1)
+        h1 = self.upsample(h1)
 
-        h = self.relu6(self.fc6(h))
-        h = self.drop6(h)
+        h2 = None
+        if self.pos:
+            h2 = self.relu6_pos(self.fc6_pos(x))
+            h2 = self.drop6_pos(h2)
+            h2 = self.relu7_pos(self.fc7_pos(h2))
+            h2 = self.drop7_pos(h2)
+            h2 = self.final_pos(h2)
+            h2 = self.upsample_pos(h2)
 
-        h = self.relu7(self.fc7(h))
-        h = self.drop7(h)
-
-        h = self.final(h)
-        h = self.upsample(h)
-
-        return h
+        return (h1, h2)
 
 class Context(nn.Module):
 
