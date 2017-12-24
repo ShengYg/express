@@ -41,8 +41,10 @@ class RoIPool(nn.Module):
                         outputs[roi_ind, :, ph, pw] = 0
                     else:
                         data = features[batch_ind]
+                        # outputs[roi_ind, :, ph, pw] = torch.max(
+                        #     torch.max(data[:, hstart:hend, wstart:wend], 1)[0], 2)[0].view(-1)
                         outputs[roi_ind, :, ph, pw] = torch.max(
-                            torch.max(data[:, hstart:hend, wstart:wend], 1)[0], 2)[0].view(-1)
+                            torch.max(data[:, hstart:hend, wstart:wend], 1)[0], 1)[0].view(-1)
 
         return outputs
 

@@ -141,20 +141,8 @@ class PhoneNet(nn.Module):
             self.n_classes = len(classes)
         self.bn = bn
         self.features = VGG16_PHONE(bn=bn)
-        # self.features = ResNet(Bottleneck, [2,3,5,2])
 
-        # self.conv5 = nn.ModuleList([nn.Sequential(Conv2d(512, 1024, 3, same_padding=True),
-        #                    Conv2d(1024, 1024, 3, same_padding=True),
-        #                    Conv2d(1024, self.n_classes, 3, same_padding=True)) for i in range(12)] + 
-        #                    [nn.Sequential(Conv2d(512, 1024, 3, same_padding=True),
-        #                    Conv2d(1024, 1024, 3, same_padding=True),
-        #                    Conv2d(1024, 8, 3, same_padding=True))])
-        # self.score_fc = nn.ModuleList([nn.AvgPool2d((3, 15)) for i in range(12)])
-        # self.length_fc = nn.AvgPool2d((3, 15))
-        # self.fc6 = nn.ModuleList([FC(512 * 15 * 3, 1024) for i in range(13)])
         self.fc6 = FC(512 * 15 * 3, 1024)
-        # self.fc6 = FC(2048 * 15 * 3, 1024)
-        # self.fc6 = nn.AvgPool2d((3, 15))
         self.score_fc = nn.ModuleList([FC(1024, self.n_classes) for i in range(12)])
         self.length_fc = FC(1024, 8)
 
@@ -193,32 +181,30 @@ class PhoneNet(nn.Module):
         ignore_weights[10] = 0
 
         for i in range(12):
-            # y = self.conv5[i](features)
             self.cls_score[i] = self.score_fc[i](y)
             self.cls_score[i] = self.cls_score[i].view(self.cls_score[i].size()[0], -1)
             if self.training:
                 self.out_loss[i] = F.cross_entropy(self.cls_score[i], network.np_to_variable(labels[:, i], is_cuda=True, dtype=torch.LongTensor), weight=ignore_weights.cuda())
-            self.cls_prob[i] = F.softmax(self.cls_score[i])
+            self.cls_prob[i] = F.softmax(self.cls_score[i], dim=1)
         
         # cls length
-        # y = self.conv5[12](features)
         self.cls_score[12] = self.length_fc(y)
         self.cls_score[12] = self.cls_score[12].view(self.cls_score[12].size()[0], -1)
         if self.training:
             self.out_loss[12] = F.cross_entropy(self.cls_score[12], network.np_to_variable(length, is_cuda=True, dtype=torch.LongTensor))
-        self.cls_prob[12] = F.softmax(self.cls_score[12])
+        self.cls_prob[12] = F.softmax(self.cls_score[12], dim=1)
 
         return self.cls_prob
 
 
-    def get_image_blob(self, im):
+    def get_image_blob(self, im, height=48, width=240):
         
         im_orig = im.astype(np.float32, copy=True)
         im_orig -= cfg.PIXEL_MEANS
 
         im_shape = im_orig.shape
-        im_scale_x = float(cfg.TEST.WIDTH) / float(im_shape[1])
-        im_scale_y = float(cfg.TEST.HEIGHT) / float(im_shape[0])
+        im_scale_x = float(width) / float(im_shape[1])
+        im_scale_y = float(height) / float(im_shape[0])
 
         processed_ims = []
         im = cv2.resize(im_orig, None, None, fx=im_scale_x, fy=im_scale_y,
@@ -230,7 +216,7 @@ class PhoneNet(nn.Module):
 
         return blob
 
-    def get_image_blob_list(self, im_list):
+    def get_image_blob_list(self, im_list, height=48, width=240):
 
         processed_ims = []
         for im in im_list:
@@ -239,8 +225,8 @@ class PhoneNet(nn.Module):
 
             im_shape = im_orig.shape
             # print im_shape
-            im_scale_x = float(cfg.TEST.WIDTH) / float(im_shape[1])
-            im_scale_y = float(cfg.TEST.HEIGHT) / float(im_shape[0])
+            im_scale_x = float(width) / float(im_shape[1])
+            im_scale_y = float(height) / float(im_shape[0])
 
             im = cv2.resize(im_orig, None, None, fx=im_scale_x, fy=im_scale_y,
                             interpolation=cv2.INTER_LINEAR)

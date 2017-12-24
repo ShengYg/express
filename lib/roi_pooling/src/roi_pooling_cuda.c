@@ -22,12 +22,12 @@ int roi_pooling_forward_cuda(int pooled_height, int pooled_width, float spatial_
         return 0;
     }
 
-    // batch size
-    int batch_size = THCudaTensor_size(state, features, 0);
-    if (batch_size != 1)
-    {
-        return 0;
-    }
+
+    // int batch_size = THCudaTensor_size(state, features, 0);
+    // if (batch_size != 1){
+    //     return 0;
+    // }
+    
     // data height
     int data_height = THCudaTensor_size(state, features, 2);
     // data width
@@ -64,12 +64,12 @@ int roi_pooling_backward_cuda(int pooled_height, int pooled_width, float spatial
         return 0;
     }
 
-    // batch size
+
     int batch_size = THCudaTensor_size(state, bottom_grad, 0);
-    if (batch_size != 1)
-    {
-        return 0;
-    }
+    // if (batch_size != 1){
+    //     return 0;
+    // }
+    
     // data height
     int data_height = THCudaTensor_size(state, bottom_grad, 2);
     // data width

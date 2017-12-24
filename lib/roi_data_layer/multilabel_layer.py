@@ -16,9 +16,12 @@ import cv2
 
 class MultilabelDataLayer(object):
 
-    def __init__(self, roidb, num_labels):
+    def __init__(self, roidb, num_labels, batch=128, height=48, width=240):
         self._roidb = roidb
         self._num_labels = num_labels
+        self._height = height
+        self._width = width
+        self._batch_size = batch
         self._shuffle_roidb_inds()
 
     def _shuffle_roidb_inds(self):
@@ -27,11 +30,11 @@ class MultilabelDataLayer(object):
 
     def _get_next_minibatch_inds(self): # softmax
         """Return the roidb indices for the next minibatch."""
-        if self._cur + cfg.TRAIN.IMS_PER_BATCH >= len(self._roidb):
+        if self._cur + self._batch_size >= len(self._roidb):
             self._shuffle_roidb_inds()
 
-        db_inds = self._perm[self._cur:self._cur + cfg.TRAIN.IMS_PER_BATCH]
-        self._cur += cfg.TRAIN.IMS_PER_BATCH
+        db_inds = self._perm[self._cur:self._cur + self._batch_size]
+        self._cur += self._batch_size
         return db_inds
 
     def _get_next_minibatch(self):
@@ -47,9 +50,9 @@ class MultilabelDataLayer(object):
         # im_blob: batch_size * channel(3) * height * width
 
         blobs = {'data': im_blob}
-        all_labels = np.ones((cfg.TRAIN.IMS_PER_BATCH, num_labels))
+        all_labels = np.ones((self._batch_size, num_labels))
         all_labels[:] = 10
-        all_length = np.zeros((cfg.TRAIN.IMS_PER_BATCH))
+        all_length = np.zeros((self._batch_size))
         for i in range(num_images):
             labels = roidb[i]['labels']
             length = labels.shape[0]
@@ -71,7 +74,6 @@ class MultilabelDataLayer(object):
             im = self._prep_im_for_blob(im, cfg.PIXEL_MEANS, roidb[i]['bbox'])
             processed_ims.append(im)
 
-        # Create a blob to hold the input images
         blob = self._im_list_to_blob(processed_ims)
         # blob: batch_size(3) * channel(3) * height * width
 
@@ -80,13 +82,12 @@ class MultilabelDataLayer(object):
     def _im_list_to_blob(self, ims):
         img_shape = ims[0].shape   
         num_images = len(ims)   # 3
-        blob = np.zeros((num_images, img_shape[0], img_shape[1], 3),    
-                        dtype=np.float32)           #[nums, h, w, 3]
+        blob = np.zeros((num_images, self._height, self._width, 3), dtype=np.float32)
         for i in xrange(num_images):
             im = ims[i]
             blob[i, 0:im.shape[0], 0:im.shape[1], :] = im
-        # Move channels (axis 3) to axis 1
-        # Axis order will become: (batch elem, channel, height, width)
+            # blob[i, self._height-im.shape[0]/2:self._height+(im.shape[0]+1)/2, 
+            #         self._width-im.shape[1]/2:self._width+(im.shape[1]+1)/2, :] = im
         channel_swap = (0, 3, 1, 2)
         blob = blob.transpose(channel_swap)
         return blob
@@ -96,14 +97,6 @@ class MultilabelDataLayer(object):
         im = im.astype(np.float32, copy=False)
         im -= pixel_means
         im_shape = im.shape
-
-        # im_scale_x = float(cfg.TRAIN.WIDTH) / float(im_shape[1]) * float(25) / float(24)
-        # im_scale_y = float(cfg.TRAIN.HEIGHT) / float(im_shape[0]) * float(9) / float(8)
-        # im = cv2.resize(im, None, None, fx=im_scale_x, fy=im_scale_y,
-        #                 interpolation=cv2.INTER_LINEAR)
-        # x = np.random.randint(0, cfg.TRAIN.WIDTH / 24.0 + 1)
-        # y = np.random.randint(0, cfg.TRAIN.HEIGHT / 8.0 + 1)
-        # crop_img = im[y:y+cfg.TRAIN.HEIGHT, x:x+cfg.TRAIN.WIDTH, :]
 
         # crop version 2
         x, y, w, h = bbox
@@ -120,10 +113,15 @@ class MultilabelDataLayer(object):
             crop_h = np.random.randint(y+h, im_shape[0]-1) - crop_y
             crop_img = im[crop_y:crop_y+crop_h, crop_x:crop_x+crop_w, :]
 
-        im_scale_x = float(cfg.TRAIN.WIDTH) / float(crop_w)
-        im_scale_y = float(cfg.TRAIN.HEIGHT) / float(crop_h)
+        im_scale_x = float(self._width) / float(crop_w)
+        im_scale_y = float(self._height ) / float(crop_h)
         crop_img = cv2.resize(crop_img, None, None, fx=im_scale_x, fy=im_scale_y,
                         interpolation=cv2.INTER_LINEAR)
+        # im_scale = float(self._width) / float(crop_w)
+        # if im_scale * crop_h > self._height:
+        #     im_scale = float(self._height ) / float(crop_h)
+        # crop_img = cv2.resize(crop_img, None, None, fx=im_scale, fy=im_scale,
+        #                 interpolation=cv2.INTER_LINEAR)
         return crop_img
 
     def forward(self):

@@ -155,34 +155,43 @@ def main(root_dir, info_name, namelist_name, output_dir, prepare):
         for im_name in namelist:
             im = cv2.imread(os.path.join(root_dir, im_name), 0)
             info_im = info[im_name]
-            boxes, labels, num_boxes = info_im[0], info_im[1], info_im[3]
+            boxes, labels, im_size, num_boxes = info_im
             img_num = 0
             for box, label, num_box in zip(boxes, labels, num_boxes):
                 if label.shape[0] < 5 or label.shape[0] > 12:
                     continue
-                
-                # label.shape[0] != 11, dont random select
+
                 x, y, w, h = box
+                cropped, bbox =  None, None
+                sort_ind = np.argsort(num_box[:,0], axis=0)
+                num_box = num_box[sort_ind, :]
+
                 x1, y1, w1, h1 = random_crop(x, y, w, h, label.shape[0])
                 assert x >= x1, '{}, {}'.format(im_name, box)
-                cropped = im[y1:y1+h1, x1:x1+w1]
+                cropped = im[y1:y1+h1+1, x1:x1+w1+1]
                 bbox = np.array([x-x1, y-y1, w, h])
+                sub = np.array([[x1, y1, x1, y1]])
+                num_box = num_box[:, :4] - sub
+
+                a = num_box[:, 2] - num_box[:, 0]
+                try:
+                    assert np.all(a>0)
+                except:
+                    print '{}'.format(filename)
+
                 filename = '{}_{}.jpg'.format(im_name[:12], img_num)
                 cv2.imwrite(os.path.join(output_dir, 'images', filename), cropped)
-
-                meta[filename] = [label, bbox]
+                meta[filename] = [label, bbox, im_size, num_box]
                 name_all.append(filename)
                 img_num += 1
 
-                # label.shape[0] == 11, random select
                 if label.shape[0] == 11:
                     for phone_length in range(5, 11):
                         start = random.randint(0, 11 - phone_length)
                         end = start + phone_length - 1
 
-                        
-                        x_in = num_box[start][0]
-                        w_in = num_box[end][2] - x_in
+                        x_in = num_box[start][0] + x1
+                        w_in = num_box[end][2] - num_box[start][0]
 
                         cropped = np.concatenate((im[y1:y1+h1, x1:x], im[y1:y1+h1, x_in:x_in+w_in], im[y1:y1+h1, x+w:x1+w1]), axis=1) 
                         bbox = np.array([x-x1, y-y1, w_in, h])
@@ -190,8 +199,7 @@ def main(root_dir, info_name, namelist_name, output_dir, prepare):
                         filename = '{}_{}.jpg'.format(im_name[:12], img_num)
                         cv2.imwrite(os.path.join(output_dir, 'images', filename), cropped)
 
-                        cropped_label = label[start:end+1]
-                        meta[filename] = [cropped_label, bbox]
+                        meta[filename] = [label[start:end+1], bbox, im_size, num_box[start:end+1]]
                         name_all.append(filename)
                         img_num += 1
             i += 1
@@ -220,29 +228,29 @@ if __name__ == '__main__':
     # random.seed(1024)
     # main(root_dir, info_name, namelist_name, output_dir, prepare)
 
-    # train phone
-    root_dir = 'data/express/dataset'
-    info_name = 'info_phone.pkl'
-    namelist_name = 'namelist_phone.pkl'
-    output_dir = 'data/express/pretrain_db_benchmark'
-    prepare = 'phone'
-    random.seed(1024)
-    main(root_dir, info_name, namelist_name, output_dir, prepare)
-
-    # test phone
-    root_dir = 'data/express/dataset'
-    info_name = 'info_test.pkl'
-    namelist_name = 'namelist_test.pkl'
-    output_dir = 'data/express/test_db_benchmark'
-    prepare = 'phone'
-    random.seed(1024)
-    main(root_dir, info_name, namelist_name, output_dir, prepare)
-
-    # # train extra phone
+    # # train phone
     # root_dir = 'data/express/dataset'
     # info_name = 'info_phone.pkl'
     # namelist_name = 'namelist_phone.pkl'
-    # output_dir = 'data/express/pretrain_db_benchmark_extra'
-    # prepare = 'phone_extra'
+    # output_dir = 'data/express/pretrain_db_benchmark'
+    # prepare = 'phone'
     # random.seed(1024)
     # main(root_dir, info_name, namelist_name, output_dir, prepare)
+
+    # # test phone
+    # root_dir = 'data/express/dataset'
+    # info_name = 'info_test.pkl'
+    # namelist_name = 'namelist_test.pkl'
+    # output_dir = 'data/express/test_db_benchmark'
+    # prepare = 'phone'
+    # random.seed(1024)
+    # main(root_dir, info_name, namelist_name, output_dir, prepare)
+
+    # train extra phone
+    root_dir = 'data/express/dataset'
+    info_name = 'info_phone.pkl'
+    namelist_name = 'namelist_phone.pkl'
+    output_dir = 'data/express/pretrain_db_benchmark_extra'
+    prepare = 'phone_extra'
+    random.seed(1024)
+    main(root_dir, info_name, namelist_name, output_dir, prepare)

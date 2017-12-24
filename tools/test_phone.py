@@ -42,8 +42,7 @@ def phone_append(a):
 if __name__ == '__main__':
     # hyper-parameters
     imdb_name = 'phone_test'
-    cfg_file = 'experiments/cfgs/train_phone.yml'
-    model_path = 'output/phone_out/'
+    model_path = 'output/phone_train/TIME-20171223-132353/'
     model_name = 'phone_56000.h5'
     trained_model = model_path + model_name
 
@@ -53,14 +52,10 @@ if __name__ == '__main__':
     thresh = 0.05
     vis = False
 
-    # if rand_seed is not None:
-    #     np.random.seed(rand_seed)
-    cfg_from_file(cfg_file)
-    # print 'Using config:'
-    # pprint.pprint(cfg)
 
-    imdb = get_imdb(imdb_name, os.path.join(cfg.DATA_DIR, 'express', 'pretrain_db_benchmark'), ratio=0.8)
+    # imdb = get_imdb(imdb_name, os.path.join(cfg.DATA_DIR, 'express', 'pretrain_db_benchmark'), ratio=0.8)
     # imdb = get_imdb(imdb_name, os.path.join(cfg.DATA_DIR, 'express', 'pretrain_db_benchmark_extra'), ratio=0.8)
+    imdb = get_imdb(imdb_name, os.path.join(cfg.DATA_DIR, 'express', 'test_db_benchmark'), ratio=0.)
     roidb = prepare_roidb(imdb)
 
     # loading rescaling weights

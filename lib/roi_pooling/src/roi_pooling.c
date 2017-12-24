@@ -13,12 +13,12 @@ int roi_pooling_forward(int pooled_height, int pooled_width, float spatial_scale
     // Number of ROIs
     int num_rois = THFloatTensor_size(rois, 0);
     int size_rois = THFloatTensor_size(rois, 1);
-    // batch size
-    int batch_size = THFloatTensor_size(features, 0);
-    if(batch_size != 1)
-    {
-        return 0;
-    }
+
+    // int batch_size = THFloatTensor_size(features, 0);
+    // if(batch_size != 1){
+    //     return 0;
+    // }
+
     // data height
     int data_height = THFloatTensor_size(features, 1);
     // data width

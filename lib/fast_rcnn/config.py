@@ -160,7 +160,7 @@ __C.TEST = edict()
 
 __C.TEST.WIDTH = 240
 __C.TEST.HEIGHT = 48
-__C.TEST.CANDIDATE = 'zero' # 'zero', 'single', 'all'
+__C.TEST.CANDIDATE = 'all' # 'zero', 'single', 'all'
 
 # Scales to use during testing (can list multiple scales)
 # Each scale is the pixel size of an image's shortest side

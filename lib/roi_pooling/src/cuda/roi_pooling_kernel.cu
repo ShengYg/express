@@ -109,7 +109,7 @@ __global__ void ROIPoolBackward(const int nthreads, const float* top_diff,
     CUDA_1D_KERNEL_LOOP(index, nthreads)
     {
 
-        // (n, c, ph, pw) is an element in the pooled output
+        // (n, c, ph, pw) is an element in the pooled input
         int n = index;
         int w = n % width;
         n /= width;
