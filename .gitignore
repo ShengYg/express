@@ -69,6 +69,7 @@
 *.log
 *.pyx
 *.json
+*.h5
 experiments/logs/
 data/
 output/
