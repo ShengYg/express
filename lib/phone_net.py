@@ -11,86 +11,6 @@ from fast_rcnn.config import cfg
 import network
 from network import Conv2d, FC
 
-class Bottleneck(nn.Module):
-    expansion = 4
-
-    def __init__(self, inplanes, planes, stride=1, downsample=None):
-        super(Bottleneck, self).__init__()
-        self.conv1 = nn.Conv2d(inplanes, planes, kernel_size=1, bias=False)
-        self.bn1 = nn.BatchNorm2d(planes)
-        self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=stride,
-                               padding=1, bias=False)
-        self.bn2 = nn.BatchNorm2d(planes)
-        self.conv3 = nn.Conv2d(planes, planes * 4, kernel_size=1, bias=False)
-        self.bn3 = nn.BatchNorm2d(planes * 4)
-        self.relu = nn.ReLU(inplace=True)
-        self.downsample = downsample
-        self.stride = stride
-
-    def forward(self, x):
-        residual = x
-
-        out = self.conv1(x)
-        out = self.bn1(out)
-        out = self.relu(out)
-
-        out = self.conv2(out)
-        out = self.bn2(out)
-        out = self.relu(out)
-
-        out = self.conv3(out)
-        out = self.bn3(out)
-
-        if self.downsample is not None:
-            residual = self.downsample(x)
-
-        out += residual
-        out = self.relu(out)
-
-        return out
-
-
-class ResNet(nn.Module):
-
-    def __init__(self, block, layers):
-        self.inplanes = 64
-        super(ResNet, self).__init__()
-        self.conv1 = nn.Sequential(Conv2d(3, 64, 3, same_padding=True),
-                                   Conv2d(64, 64, 3, same_padding=True),
-                                   nn.MaxPool2d(2))
-        self.layer1 = self._make_layer(block, 64, layers[0])
-        self.layer2 = self._make_layer(block, 128, layers[1], stride=2)
-        self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
-        self.layer4 = self._make_layer(block, 512, layers[3], stride=2)
-        # self.avgpool = nn.AvgPool2d((15, 3))
-
-    def _make_layer(self, block, planes, blocks, stride=1):
-        downsample = None
-        if stride != 1 or self.inplanes != planes * block.expansion:
-            downsample = nn.Sequential(
-                nn.Conv2d(self.inplanes, planes * block.expansion,
-                          kernel_size=1, stride=stride, bias=False),
-                nn.BatchNorm2d(planes * block.expansion),
-            )
-
-        layers = []
-        layers.append(block(self.inplanes, planes, stride, downsample))
-        self.inplanes = planes * block.expansion
-        for i in range(1, blocks):
-            layers.append(block(self.inplanes, planes))
-
-        return nn.Sequential(*layers)
-
-    def forward(self, x):
-        x = self.conv1(x)
-        x = self.layer1(x)
-        x = self.layer2(x)
-        x = self.layer3(x)
-        x = self.layer4(x)
-        # x = self.avgpool(x)
-        return x
-        
-
 class VGG16_PHONE(nn.Module):
     def __init__(self, bn=False):
         super(VGG16_PHONE, self).__init__()
@@ -142,11 +62,17 @@ class PhoneNet(nn.Module):
         self.bn = bn
         self.features = VGG16_PHONE(bn=bn)
 
-        self.fc6 = FC(512 * 15 * 3, 1024)
+        self.fc6 = FC(512 * 16 * 3, 1024)
+        
+        # self.fc_pool1 = nn.MaxPool2d((1,2))
+        # self.fc_pool2 = nn.MaxPool2d((1,4))
+        # self.fc_pool3 = nn.MaxPool2d((1,8))
+        # self.fc_pool4 = nn.MaxPool2d((1,16))
+        # self.fc6 = FC(512 * 31 * 3, 1024)
+
         self.score_fc = nn.ModuleList([FC(1024, self.n_classes) for i in range(12)])
         self.length_fc = FC(1024, 8)
 
-        # loss
         self.length = 13
         self.out_loss = [None] * 13
         self.cls_score = [None] * 13
@@ -172,10 +98,18 @@ class PhoneNet(nn.Module):
     def forward(self, im_data, labels=None, length=None):
         im_data = network.np_to_variable(im_data, is_cuda=True)
         features = self.features(im_data)
+
         x = features.view(features.size()[0], -1)
         y = self.fc6(x)
         if not self.bn:
             y = F.dropout(y, training=self.training)
+
+        
+        # y = torch.cat([features, self.fc_pool1(features), self.fc_pool2(features), self.fc_pool3(features), self.fc_pool4(features)], dim=-1)
+        # y = y.view(y.size()[0], -1)
+        # y = self.fc6(y)
+        # if not self.bn:
+        #     y = F.dropout(y, training=self.training)
 
         ignore_weights = torch.from_numpy(np.ones(self.n_classes, dtype=np.float32))
         ignore_weights[10] = 0
@@ -197,26 +131,33 @@ class PhoneNet(nn.Module):
         return self.cls_prob
 
 
-    def get_image_blob(self, im, height=48, width=240):
+    def get_image_blob(self, im, height=48, width=256):
         
         im_orig = im.astype(np.float32, copy=True)
         im_orig -= cfg.PIXEL_MEANS
 
         im_shape = im_orig.shape
+        processed_ims = []
+
+        ## v1
         im_scale_x = float(width) / float(im_shape[1])
         im_scale_y = float(height) / float(im_shape[0])
-
-        processed_ims = []
         im = cv2.resize(im_orig, None, None, fx=im_scale_x, fy=im_scale_y,
                         interpolation=cv2.INTER_LINEAR)
+        ## v2
+        # im_scale = float(width) / float(im_shape[1])
+        # if im_scale * im_shape[0] > height:
+        #     im_scale = float(height) / float(im_shape[0])
+        # im = cv2.resize(im_orig, None, None, fx=im_scale, fy=im_scale,
+        #                 interpolation=cv2.INTER_LINEAR)
         processed_ims.append(im)
 
         # Create a blob to hold the input images
-        blob = self._im_list_to_blob(processed_ims)
+        blob = self._im_list_to_blob(processed_ims, height=height, width=width)
 
         return blob
 
-    def get_image_blob_list(self, im_list, height=48, width=240):
+    def get_image_blob_list(self, im_list, height=48, width=256):
 
         processed_ims = []
         for im in im_list:
@@ -224,44 +165,36 @@ class PhoneNet(nn.Module):
             im_orig -= cfg.PIXEL_MEANS
 
             im_shape = im_orig.shape
-            # print im_shape
+
+            ## v1
             im_scale_x = float(width) / float(im_shape[1])
             im_scale_y = float(height) / float(im_shape[0])
-
             im = cv2.resize(im_orig, None, None, fx=im_scale_x, fy=im_scale_y,
                             interpolation=cv2.INTER_LINEAR)
+            ## v2
+            # im_scale = float(width) / float(im_shape[1])
+            # if im_scale * im_shape[0] > height:
+            #     im_scale = float(height) / float(im_shape[0])
+            # im = cv2.resize(im_orig, None, None, fx=im_scale, fy=im_scale,
+            #                 interpolation=cv2.INTER_LINEAR)
             processed_ims.append(im)
 
         # Create a blob to hold the input images
-        blob = self._im_list_to_blob(processed_ims)
+        blob = self._im_list_to_blob(processed_ims, height=height, width=width)
 
         return blob
 
 
-    def _im_list_to_blob(self, ims):
-        img_shape = ims[0].shape   
+    def _im_list_to_blob(self, ims, height=48, width=256):
         num_images = len(ims)
-        blob = np.zeros((num_images, img_shape[0], img_shape[1], 3),    
-                        dtype=np.float32)           #[nums, h, w, 3]
+        blob = np.zeros((num_images, height, width, 3), dtype=np.float32)
         for i in xrange(num_images):
             im = ims[i]
             blob[i, 0:im.shape[0], 0:im.shape[1], :] = im
-        # Axis order will become: (batch elem, channel, height, width)
+            # blob[i, height/2-im.shape[0]/2:height/2+(im.shape[0]+1)/2, 
+            #         width/2-im.shape[1]/2:width/2+(im.shape[1]+1)/2, :] = im
         channel_swap = (0, 3, 1, 2)
         blob = blob.transpose(channel_swap)
         return blob
 
-    # def load_from_npz(self, params):
-    #     self.rpn.load_from_npz(params)
-
-    #     pairs = {'fc6.fc': 'fc6', 'fc7.fc': 'fc7', 'score_fc.fc': 'cls_score', 'bbox_fc.fc': 'bbox_pred'}
-    #     own_dict = self.state_dict()
-    #     for k, v in pairs.items():
-    #         key = '{}.weight'.format(k)
-    #         param = torch.from_numpy(params['{}/weights:0'.format(v)]).permute(1, 0)
-    #         own_dict[key].copy_(param)
-
-    #         key = '{}.bias'.format(k)
-    #         param = torch.from_numpy(params['{}/biases:0'.format(v)])
-    #         own_dict[key].copy_(param)
 

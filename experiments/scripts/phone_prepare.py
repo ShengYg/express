@@ -158,6 +158,7 @@ def main(root_dir, info_name, namelist_name, output_dir, prepare):
             boxes, labels, im_size, num_boxes = info_im
             img_num = 0
             for box, label, num_box in zip(boxes, labels, num_boxes):
+                name_all_tmp = []
                 if label.shape[0] < 5 or label.shape[0] > 12:
                     continue
 
@@ -182,7 +183,7 @@ def main(root_dir, info_name, namelist_name, output_dir, prepare):
                 filename = '{}_{}.jpg'.format(im_name[:12], img_num)
                 cv2.imwrite(os.path.join(output_dir, 'images', filename), cropped)
                 meta[filename] = [label, bbox, im_size, num_box]
-                name_all.append(filename)
+                name_all_tmp.append(filename)
                 img_num += 1
 
                 if label.shape[0] == 11:
@@ -200,14 +201,20 @@ def main(root_dir, info_name, namelist_name, output_dir, prepare):
                         cv2.imwrite(os.path.join(output_dir, 'images', filename), cropped)
 
                         meta[filename] = [label[start:end+1], bbox, im_size, num_box[start:end+1]]
-                        name_all.append(filename)
+                        name_all_tmp.append(filename)
                         img_num += 1
+                name_all.append(name_all_tmp)
             i += 1
             pbar.update(i)
         pbar.finish()
         print 'express image nums: {}'.format(i)
 
-        random.shuffle(name_all)
+        if prepare != 'phone_extra':
+            random.shuffle(name_all)
+        else:
+            random.shuffle(name_all)
+            name_all = reduce(lambda x,y :x+y ,name_all)
+
         print 'phone image nums: {}'.format(len(name_all))
         cache_file = os.path.join(output_dir, 'namelist.pkl')
         with open(cache_file, 'wb') as fid:

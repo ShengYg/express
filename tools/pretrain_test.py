@@ -7,7 +7,7 @@ import numpy as np
 from collections import Counter
 
 import network
-from pretrain_phone import Net, Net1
+from pretrain import Net
 from utils.timer import Timer
 from fast_rcnn.nms_wrapper import nms
 import pprint
@@ -43,7 +43,7 @@ if __name__ == '__main__':
     imdb_name = 'mnist_test'
     cfg_file = 'experiments/cfgs/train_mnist.yml'
     model_path = 'output/mnist_train/'
-    model_name = 'mnist_14800.h5'
+    model_name = 'mnist_10000.h5'
     trained_model = model_path + model_name
 
     rand_seed = 1024
@@ -70,7 +70,7 @@ if __name__ == '__main__':
     else:
         # load data
         print 'loading model {}'.format(trained_model)
-        net = Net1()
+        net = Net()
         network.load_net(trained_model, net)
         print 'load model successfully!'
 

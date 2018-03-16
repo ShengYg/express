@@ -5,7 +5,6 @@ import datasets
 from datasets.imdb import imdb
 from fast_rcnn.config import cfg
 import cPickle
-import itertools
 import heapq
 
 def _compute_iou(a, b):
@@ -71,6 +70,7 @@ class phone(imdb):
         Load the indexes for the specific subset (train / test).
         For express, the index is just the image file name.
         """
+
         train_num = int(len(self._namelist) * self._training_ratio)
         if self._image_set == 'train':
             return self._namelist[:train_num]
@@ -271,4 +271,62 @@ class phone(imdb):
         print tp_arr
         print all_arr
         print tp_arr.astype(np.float32) / all_arr
+
+    def evaluate_ohem(self, all_boxes, output_dir, roidb):
+        gt_roidb = roidb
+        assert len(all_boxes) == len(gt_roidb)
+        assert len(all_boxes[1]) == 13
+
+        tp, num, tlength, phone_right = 0, 0, 0, 0
+        alpha = 0
+        alpha_list = []
+        res_all = []
+        phone_right_list = []
+        # mat = np.zeros((10, 11), dtype=np.int32)
+        test_image_num = 0
+        for gt, det in zip(gt_roidb, all_boxes): 
+            gt_labels = gt['labels']
+            phone_length = np.argmax(safe_log(det[-1][0])) + 5
+            det = np.vstack((det[:phone_length]))
+            det = safe_log(det[:, :-1])
+            res = np.argmax(det, axis=1).tolist()
+            res_all.append(res)
+
+            if len(res) > gt_labels.shape[0]:
+                res = res[:gt_labels.shape[0]] + [len(res)]
+            elif len(res) < gt_labels.shape[0]:
+                res = res + [10] * (gt_labels.shape[0] - len(res)) + [len(res)]
+            else:
+                res += [len(res)]
+                tlength += 1
+
+            res = np.array(res)
+            num += gt_labels.shape[0]
+            tp += np.sum((res[:-1] == gt_labels))
+
+            ## the result is slower than evaluate_detections
+            if (res[:-1] == gt_labels).all():
+                phone_right += 1
+                phone_right_list.append(test_image_num)
+            test_image_num += 1
+
+            alpha = np.sum((res[:-1] == gt_labels))
+            if res[-1]==gt_labels.shape[0]:
+                alpha += 1
+            alpha = gt_labels.shape[0] + 1 - alpha
+            alpha_list.append(alpha + 1)
+            # wrong_num+1
+
+        cache_file = os.path.join(output_dir, 'detection_phone.pkl')
+        with open(cache_file, 'wb') as fid:
+            cPickle.dump(res_all, fid, cPickle.HIGHEST_PROTOCOL)
+        cache_file = os.path.join(output_dir, 'phone_right_list.pkl')
+        with open(cache_file, 'wb') as fid:
+            cPickle.dump(phone_right_list, fid, cPickle.HIGHEST_PROTOCOL)
+        print 'right digits: {} / {} = {:.4f}'.format(tp, num, float(tp) / float(num))
+        print 'right length: {} / {} = {:.4f}'.format(tlength, len(gt_roidb), float(tlength) / float(len(gt_roidb)))
+        print 'right phones: {} / {} = {:.4f}'.format(phone_right, len(gt_roidb), float(phone_right) / float(len(gt_roidb)))
+
+        alpha_list = np.array(alpha_list).astype(np.float64)
+        return alpha_list
 

@@ -23,10 +23,8 @@ def prepare_roidb(imdb):
         roidb[i]['image'] = imdb.image_path_at(i)
     return roidb
 
-def im_detect(net, image):
-
-    im_data = net.get_image_blob(image)
-    # print im_data.shape
+def im_detect(net, image, height=48, width=256):
+    im_data = net.get_image_blob(image, height=height, width=width)
     cls_prob = net(im_data)
     scores = [cls_prob[i].data.cpu().numpy() for i in range(13)]
     return scores
@@ -42,8 +40,8 @@ def phone_append(a):
 if __name__ == '__main__':
     # hyper-parameters
     imdb_name = 'phone_test'
-    model_path = 'output/phone_train/TIME-20171223-132353/'
-    model_name = 'phone_56000.h5'
+    model_path = 'output/phone_train/TIME-20180106-121843/'
+    model_name = 'phone_88000.h5'
     trained_model = model_path + model_name
 
     rand_seed = 1024
@@ -75,6 +73,9 @@ if __name__ == '__main__':
     
     output_dir = get_output_dir(imdb, model_name)
     cache_file = os.path.join(output_dir, 'detection_score.pkl')
+    num_images = len(imdb.image_index)
+    all_boxes = [[[] for _ in xrange(13)]
+                 for _ in xrange(num_images)]
     if os.path.exists(cache_file):
         with open(cache_file, 'rb') as fid:
             all_boxes = cPickle.load(fid)
@@ -88,19 +89,14 @@ if __name__ == '__main__':
 
         net.cuda()
         net.eval()
-
         print 'starting test ...'
-        num_images = len(imdb.image_index)
-        all_boxes = [[[] for _ in xrange(13)]
-                     for _ in xrange(num_images)]
         pbar = ProgressBar(maxval=num_images)
         pbar.start()
-
         for i in range(num_images):
             im = cv2.imread(imdb.image_path_at(i))
             x, y, w, h = roidb[i]['bbox']
             im = im[y:y+h, x:x+w, :]
-            scores = im_detect(net, im)
+            scores = im_detect(net, im, height=48, width=256)
             for j in range(13):
                 all_boxes[i][j] = scores[j]
             pbar.update(i)
@@ -110,7 +106,7 @@ if __name__ == '__main__':
             cPickle.dump(all_boxes, fid, cPickle.HIGHEST_PROTOCOL)
 
     print 'Evaluating detections'
-    # imdb.evaluate_detections(all_boxes, output_dir)
+    # imdb.evaluate_ohem(all_boxes, output_dir, roidb)
     imdb.evaluate_detections(all_boxes, output_dir, roidb, weights=weights, length_weights=length_weights)
 
 

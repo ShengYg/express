@@ -13,39 +13,76 @@ import random
 import cPickle
 import cv2
 
+def precision_cut(weight):
+    weight = weight.astype(np.float64)
+    weight = weight / np.sum(weight)
+    cut = weight.shape[0]-1
+    while np.sum(weight[:cut]) >= 1.0:
+        cut -= 1
+    print '#######precision cut, so cut = {}-{}'.format(weight.shape[0], weight.shape[0]-cut-1)
+    return weight[:cut+1]
 
-class MultilabelDataLayer(object):
-
-    def __init__(self, roidb, num_labels, batch=128, height=48, width=240):
-        self._roidb = roidb
-        self._num_labels = num_labels
-        self._height = height
-        self._width = width
-        self._batch_size = batch
-        self._shuffle_roidb_inds()
+class RandomSampler(object):
+    def __init__(self, length, batch_size):
+        self._length = length
+        self._batch_size = batch_size
+        _shuffle_roidb_inds()
 
     def _shuffle_roidb_inds(self):
-        self._perm = np.random.permutation(np.arange(len(self._roidb)))
+        self._perm = np.random.permutation(np.arange(self._length))
         self._cur = 0
 
-    def _get_next_minibatch_inds(self): # softmax
-        """Return the roidb indices for the next minibatch."""
-        if self._cur + self._batch_size >= len(self._roidb):
+    def forward(self):
+        if self._cur + self._batch_size >= self._length:
             self._shuffle_roidb_inds()
 
         db_inds = self._perm[self._cur:self._cur + self._batch_size]
         self._cur += self._batch_size
         return db_inds
 
+class WeightedRandomSampler(object):
+    def __init__(self, length, batch_size, weight):
+        self._length = length
+        self._batch_size = batch_size
+        self._weight = precision_cut(weight)
+        self._batch = 1000
+        self._shuffle_roidb_inds()
+
+    def set_weight(self, weight):
+        self._weight = precision_cut(weight)
+        self._shuffle_roidb_inds()
+
+    def _shuffle_roidb_inds(self):
+        print 'reshuffle......it means {}*{} batches or new weights'.format(self._batch, self._batch_size)
+        choose = npr.multinomial(self._batch * self._batch_size, self._weight)
+        self._perm = npr.permutation(np.repeat(np.arange(self._length), choose))
+        self._cur = 0
+
+    def forward(self):
+        if self._cur + self._batch_size >= self._batch * self._batch_size:
+            self._shuffle_roidb_inds()
+
+        db_inds = self._perm[self._cur:self._cur + self._batch_size]
+        self._cur += self._batch_size
+        return db_inds
+
+class MultilabelDataLayer(object):
+    def __init__(self, roidb, num_labels, sampler, batch_size=128, height=48, width=256):
+        self._roidb = roidb
+        self._num_labels = num_labels
+        self._height = height
+        self._width = width
+        self._batch_size = batch_size
+        self._sampler = sampler
+
     def _get_next_minibatch(self):
         
-        db_inds = self._get_next_minibatch_inds()
+        db_inds = self._sampler.forward()
         minibatch_db = [self._roidb[i] for i in db_inds]
         return self._get_minibatch(minibatch_db, self._num_labels)
 
     def _get_minibatch(self, roidb, num_labels):
         num_images = len(roidb)
-
         im_blob = self._get_image_blob(roidb)
         # im_blob: batch_size * channel(3) * height * width
 
@@ -70,7 +107,6 @@ class MultilabelDataLayer(object):
             im = cv2.imread(roidb[i]['image'])
             if roidb[i]['flipped']:
                 im = im[:, ::-1, :]
-            # im = self._prep_im_for_blob(im, cfg.PIXEL_MEANS)
             im = self._prep_im_for_blob(im, cfg.PIXEL_MEANS, roidb[i]['bbox'])
             processed_ims.append(im)
 
@@ -81,13 +117,13 @@ class MultilabelDataLayer(object):
 
     def _im_list_to_blob(self, ims):
         img_shape = ims[0].shape   
-        num_images = len(ims)   # 3
+        num_images = len(ims)
         blob = np.zeros((num_images, self._height, self._width, 3), dtype=np.float32)
         for i in xrange(num_images):
             im = ims[i]
             blob[i, 0:im.shape[0], 0:im.shape[1], :] = im
-            # blob[i, self._height-im.shape[0]/2:self._height+(im.shape[0]+1)/2, 
-            #         self._width-im.shape[1]/2:self._width+(im.shape[1]+1)/2, :] = im
+            # blob[i, self._height/2-im.shape[0]/2:self._height/2+(im.shape[0]+1)/2, 
+            #         self._width/2-im.shape[1]/2:self._width/2+(im.shape[1]+1)/2, :] = im
         channel_swap = (0, 3, 1, 2)
         blob = blob.transpose(channel_swap)
         return blob
@@ -113,10 +149,12 @@ class MultilabelDataLayer(object):
             crop_h = np.random.randint(y+h, im_shape[0]-1) - crop_y
             crop_img = im[crop_y:crop_y+crop_h, crop_x:crop_x+crop_w, :]
 
+        # v1
         im_scale_x = float(self._width) / float(crop_w)
         im_scale_y = float(self._height ) / float(crop_h)
         crop_img = cv2.resize(crop_img, None, None, fx=im_scale_x, fy=im_scale_y,
                         interpolation=cv2.INTER_LINEAR)
+        # # v2
         # im_scale = float(self._width) / float(crop_w)
         # if im_scale * crop_h > self._height:
         #     im_scale = float(self._height ) / float(crop_h)
