@@ -12,7 +12,10 @@ set -e
 export PYTHONUNBUFFERED="True"
 
 GPU_ID=0
-NET="VGG16"
+# NET="VGG16_3"
+# NET="VGG16_4"
+# NET="VGG16_4_multi"
+NET="VGG16_4_multi_RPN"
 DATASET=express
 
 
@@ -37,49 +40,22 @@ case $DATASET in
     ;;
 esac
 
-LOG="experiments/logs/${DATASET}_train_${NET}_${EXTRA_ARGS_SLUG}.txt.`date +'%Y-%m-%d_%H-%M-%S'`"
+LOG="output/${TRAIN_IMDB}/${NET}/${DATASET}_train_${NET}_${EXTRA_ARGS_SLUG}.txt.`date +'%Y-%m-%d_%H-%M-%S'`"
 exec &> >(tee -a "$LOG")
 echo Logging output to "$LOG"
 
-# LOG="experiments/logs/phone_train.txt.`date +'%Y-%m-%d_%H-%M-%S'`"
-# python tools/pretrain_mnist.py all 2>&1 | tee "$LOG"
-
-
-# python tools/train_net.py --gpu ${GPU_ID} \
-#   --solver models/${PT_DIR}/${NET}/solver.prototxt \
-#   --imdb ${TRAIN_IMDB} \
-#   --iters ${ITERS} \
-#   --cfg experiments/cfgs/${YML} \
-#   ${EXTRA_ARGS}
-
-# set +x
-# NET_FINAL=`grep -B 1 "done solving" ${LOG} | grep "Wrote snapshot" | awk '{print $4}'`
-# set -x
-
-NET_FINAL="output/express_train/express_iter_25000.caffemodel"
-python tools/test_net.py --gpu ${GPU_ID} \
-  --net ${NET_FINAL} \
-  --test_def models/${PT_DIR}/${NET}/test.prototxt \
-  --imdb ${TEST_IMDB} \
+python tools/train_net.py --gpu ${GPU_ID} \
+  --solver models/${PT_DIR}/${NET}/solver.prototxt \
+  --imdb ${TRAIN_IMDB} \
+  --iters ${ITERS} \
   --cfg experiments/cfgs/${YML} \
   ${EXTRA_ARGS}
 
-####################################################################################################
-
-# python tools/train_net.py --gpu ${GPU_ID} \
-#   --solver models/${PT_DIR}/${NET}/solver.prototxt \
-#   --imdb ${TRAIN_IMDB} \
-#   --iters ${ITERS} \
-#   --cfg experiments/cfgs/${YML} \
-#   --weights output/mnist_out/mnist_iter_10000.caffemodel
-#   ${EXTRA_ARGS}
-
 # set +x
 # NET_FINAL=`grep -B 1 "done solving" ${LOG} | grep "Wrote snapshot" | awk '{print $4}'`
 # set -x
 
-
-# NET_FINAL="output/phone_out/phone_iter_60000.caffemodel"
+# NET_FINAL="output/express_train/express_iter_25000.caffemodel"
 # python tools/test_net.py --gpu ${GPU_ID} \
 #   --net ${NET_FINAL} \
 #   --test_def models/${PT_DIR}/${NET}/test.prototxt \

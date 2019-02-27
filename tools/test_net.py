@@ -18,73 +18,37 @@ def _compute_iou(a, b):
     union = (a[2] - a[0]) * (a[3] - a[1]) + (b[2] - b[0]) * (b[3] - b[1]) - inter
     return inter * 1.0 / union
 
-def parse_args():
-    """
-    Parse input arguments
-    """
-    parser = argparse.ArgumentParser(description='Test a Fast R-CNN network')
-    parser.add_argument('--gpu', dest='gpu_id', help='GPU id to use',
-                        default=0, type=int)
-    parser.add_argument('--test_def',
-                        help='prototxt file defining the testing network',
-                        default=None, type=str)
-    parser.add_argument('--net', dest='caffemodel',
-                        help='model to test',
-                        default=None, type=str)
-    parser.add_argument('--cfg', dest='cfg_file',
-                        help='optional config file', default=None, type=str)
-    parser.add_argument('--wait', dest='wait',
-                        help='wait until net file exists',
-                        default=True, type=bool)
-    parser.add_argument('--imdb', dest='imdb_name',
-                        help='dataset to test',
-                        default='psdb_test', type=str)
-    parser.add_argument('--comp', dest='comp_mode', help='competition mode',
-                        action='store_true')
-    parser.add_argument('--set', dest='set_cfgs',
-                        help='set config keys', default=None,
-                        nargs=argparse.REMAINDER)
-    parser.add_argument('--vis', dest='vis', help='visualize detections',
-                        action='store_true')
-
-    if len(sys.argv) == 1:
-        parser.print_help()
-        sys.exit(1)
-
-    args = parser.parse_args()
-    return args
-
 if __name__ == '__main__':
-    args = parse_args()
+    all_boxes = None
 
-    print('Called with args:')
-    print(args)
-
-    if args.cfg_file is not None:
-        cfg_from_file(args.cfg_file)
-    if args.set_cfgs is not None:
-        cfg_from_list(args.set_cfgs)
-
-    cfg.GPU_ID = args.gpu_id
-
-    print('Using config:')
+    test_def = os.path.join(os.getcwd(), 'models', 'express', 'VGG16_4_multi', 'test.prototxt')
+    caffemodel = os.path.join(os.getcwd(), 'output', 'express_train', 'VGG16_4_multi', 'express_iter_15000.caffemodel')
+    imdb_name = 'express_test'
+    cfg_file = 'experiments/cfgs/train.yml'
+    cfg.GPU_ID = 0
+    cfg_from_file(cfg_file)
+    print 'Using config:'
     pprint.pprint(cfg)
 
-    while not os.path.exists(args.caffemodel) and args.wait:
-        print('Waiting for {} to exist...'.format(args.caffemodel))
-        time.sleep(10)
-
-    caffe.set_mode_gpu()
-    caffe.set_device(args.gpu_id)
-
-    # Detect and store re-id features for all the images in the test images pool
-    imdb = get_imdb(args.imdb_name, os.path.join(cfg.DATA_DIR, 'express'), ratio=0.8)
-    imdb.competition_mode(args.comp_mode)
-
-    net = None
-    output_dir = get_output_dir(imdb, os.path.splitext(os.path.basename(args.caffemodel))[0])
+    imdb = get_imdb(imdb_name, os.path.join(cfg.DATA_DIR, 'express'), ratio=0.8)
+    output_dir = os.path.join(os.getcwd(), 'output', 'express_test')
+    if not os.path.isdir(output_dir):
+        os.makedirs(output_dir)
     cache_file = os.path.join(output_dir, 'detections.pkl')
-    if not os.path.exists(cache_file):
-        net = caffe.Net(args.test_def, args.caffemodel, caffe.TEST)
-    test_net(net, imdb, output_dir, thresh=0.6)
+    if os.path.exists(cache_file):
+        with open(cache_file, 'rb') as fid:
+            all_boxes = cPickle.load(fid)
+        print "###### load detections"
+    else:
+        caffe.set_mode_gpu()
+        caffe.set_device(0)
+        net = caffe.Net(test_def, caffemodel, caffe.TEST)
+        net.name = os.path.splitext(os.path.basename(caffemodel))[0]
+        all_boxes = test_net(net, imdb, output_dir, thresh=0.1, iou_thres=0.6)
+    imdb.evaluate_detections(all_boxes, output_dir, iou_thres=0.5)
+
+    ap = 0
+    for item in [x / 100. for x in range(50,100,5)]:
+        ap += imdb.evaluate_detections(all_boxes, output_dir, iou_thres=item)
+    print 'map[0.5,0.95]: ', ap/10
 

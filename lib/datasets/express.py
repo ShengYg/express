@@ -107,6 +107,7 @@ class express(imdb):
 
     def evaluate_detections(self, all_boxes, output_dir, iou_thres=0.6):
         # all_boxes[cls][image] = N x 5 (x1, y1, x2, y2, score)
+        print '###### Evaluating detections'
         gt_roidb = self.gt_roidb()
         assert len(all_boxes) == 2
         assert len(all_boxes[1]) == len(gt_roidb)
@@ -114,6 +115,7 @@ class express(imdb):
         y_score = []
         count_gt = 0
         count_tp = 0
+        areas = []
         for gt, det in zip(gt_roidb, all_boxes[1]):
             gt_boxes = gt['boxes']
             det = np.asarray(det)
@@ -153,12 +155,33 @@ class express(imdb):
             count_tp += tfmat.sum()
             count_gt += num_gt
 
+            ## compute mean area of IOUS between gt and det
+            for i in xrange(num_gt):
+                for j in xrange(num_det):
+                    if tfmat[i,j]:
+                        areas.append(ious[i,j])
+
         from sklearn.metrics import average_precision_score, precision_recall_curve
         det_rate = count_tp * 1.0 / count_gt
         ap = average_precision_score(y_true, y_score) * det_rate
-        precision, recall, __ = precision_recall_curve(y_true, y_score)
+        precision, recall, threshold = precision_recall_curve(y_true, y_score)
         recall *= det_rate
+        print 'evaluating with iou_thres={}'.format(iou_thres)
         print 'mAP: {:.4%}'.format(ap)
+
+        # assert len(ious) == count_tp, 'express.py error!!!!!'
+        print 'mean IOUs: {:.4%}'.format(np.mean(np.array(areas)))
+
+        print 'Saving evaluation information...'
+        saving = {  'ap': ap,
+                    'precision': precision,
+                    'recall': recall,
+                    'threshold': threshold, 
+                    'iou': ious,}
+        with open(os.path.join(output_dir, 'evaluation.pkl'), 'wb') as fid:
+            cPickle.dump(saving, fid, cPickle.HIGHEST_PROTOCOL)
+
+        return ap
 
     def get_detections(self, all_boxes, det_phone_dir, iou_thres=0.5):
         # all_boxes[cls][image] = N x 5 (x1, y1, x2, y2, score)
@@ -265,6 +288,7 @@ class express(imdb):
             k = 0
             meta = {}
             name_all = []
+            cropped_image_num = 0
             for gt, det in zip(gt_roidb, all_boxes[1]):
                 det = np.asarray(det)
                 im_width = gt['im_size'][0]
@@ -277,13 +301,12 @@ class express(imdb):
                 det = det[inds]
                 det = det[:3]
 
-                num_det = det.shape[0]
-                if num_det == 0:
-                    continue
+                # num_det = det.shape[0]
+                # if num_det == 0:
+                #     continue
 
                 # crop images
                 im = cv2.imread(os.path.join(self._data_path, im_name))
-                img_num = 0
                 det_name_list = []
                 for box in det:
                     x1, y1, x2, y2 = box[:4]
@@ -295,11 +318,12 @@ class express(imdb):
                         continue
                     # x, y, w, h = random_crop(x, y, w, h, label.shape[0])
                     cropped = im[y1:y2+1, x1:x2+1, :]
-                    filename = im_name.split('_')[0] + '_{}.jpg'.format(img_num)
+                    # filename = im_name.split('_')[0] + '_{}.jpg'.format(img_num)
+                    filename = '{:04d}.jpg'.format(cropped_image_num)
                     cv2.imwrite(os.path.join(det_phone_dir, 'images', filename), cropped)
                     ### preprocess
                     det_name_list.append(filename)
-                    img_num += 1
+                    cropped_image_num += 1
                 meta[im_name] = [im_label, det_name_list]
                 name_all.append(im_name)
                 k += 1
@@ -316,6 +340,7 @@ class express(imdb):
             with open(cache_file, 'wb') as fid:
                 cPickle.dump(meta, fid, cPickle.HIGHEST_PROTOCOL)
 
+            print 'cropped image number: ', cropped_image_num
 
     def get_detection_error(self, all_boxes, iou_thres=0.5):
         # test whether the box is larger or smaller in horizontal

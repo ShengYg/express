@@ -7,6 +7,47 @@ from fast_rcnn.config import cfg
 import cPickle
 import heapq
 
+def get_dis(s1, s2):
+    # get distance between s1 and s2, s1=[1,2,3...]
+    last = 0
+    tmp = range(len(s2) + 1)
+    value = None
+
+    for i in range(len(s1)):
+        tmp[0] = i + 1
+        last = i
+        for j in range(len(s2)):
+            if s1[i] == s2[j]:
+                value = last
+            else:
+                value = 1 + min(last, tmp[j], tmp[j + 1])
+            last = tmp[j+1]
+            tmp[j+1] = value
+    return value if value < 4 else 4
+
+def LCS(str1, str2):
+    n1, n2 = len(str1), len(str2)
+    vec = [[0]*(n2+1) for _ in range(n1+1)]
+    
+    for i in range(1,n1+1):
+        for j in range(1, n2+1):
+            if str1[i-1]==str2[j-1]:
+                vec[i][j]=vec[i-1][j-1]+1
+            else:
+                vec[i][j]=max(vec[i][j-1],vec[i-1][j])
+
+    return vec[n1][n2]
+
+def get_measure(pred, gt):
+    # get precision and recall between pred and ft, pred=[1,2,3...]
+    lcs_len = LCS(pred, gt)
+    tp = float(lcs_len)
+    fn = len(gt) - lcs_len
+    fp = len(pred) - lcs_len
+    precision = tp/(tp+fp)
+    recall = tp/(tp+fn)
+    return precision, recall
+
 def _compute_iou(a, b):
     x1 = max(a[0], b[0])
     y1 = max(a[1], b[1])
@@ -199,6 +240,9 @@ class phone(imdb):
         phone_right_list = []
         mat = np.zeros((10, 11), dtype=np.int32)
         test_image_num = 0
+        # dis_list = []
+        dis_list = [0,0,0,0,0]
+        precision_all, recall_all = 0, 0
         for gt, det in zip(gt_roidb, all_boxes):
 
             gt_labels = gt['labels']
@@ -223,6 +267,18 @@ class phone(imdb):
             elif cfg.TEST.CANDIDATE == 'zero':
                 res = [get_labels_rescaling(det)[0]]
                 res_all.append(res)
+
+            # twmp
+            my_pred = res[0]  # should not change my_pred here
+            # print gt_labels
+            my_gt = gt_labels.tolist()
+            dis = get_dis(my_pred, my_gt)
+            dis_list[dis] += 1
+            precision, recall = get_measure(my_pred, my_gt)
+            precision_all += precision
+            recall_all += recall
+            # dis_list.append([my_pred, my_gt, dis, precision, recall])
+
 
             if len(res[0]) == gt_labels.shape[0]:
                 extra_num += 1
@@ -264,13 +320,21 @@ class phone(imdb):
         print 'right phones: {} / {} = {:.4f}'.format(phone_right, len(gt_roidb), float(phone_right) / float(len(gt_roidb)))
         print 'extra right phones: {:.4f}'.format(float(extra_tp) / float(extra_num))
 
-        print 'all: {}'.format(all_length)
-        print 'length right: {}'.format(each_length)
-        print 'phone right: {}'.format(phone_right_each)
+        # print 'all: {}'.format(all_length)
+        # print 'length right: {}'.format(each_length)
+        # print 'phone right: {}'.format(phone_right_each)
 
-        print tp_arr
-        print all_arr
-        print tp_arr.astype(np.float32) / all_arr
+        # print tp_arr
+        # print all_arr
+        # print tp_arr.astype(np.float32) / all_arr
+
+        # cache_file = os.path.join(output_dir, 'dis.pkl')
+        # with open(cache_file, 'wb') as fid:
+        #     cPickle.dump(dis_list, fid, cPickle.HIGHEST_PROTOCOL)
+        print("distance: ", dis_list)
+        print("distance%: ", [item/float(len(gt_roidb)) for item in dis_list])
+        print("mean precision: {} / {} = {:.4f}".format(precision_all, len(gt_roidb), precision_all / len(gt_roidb)))
+        print("mean recall: {} / {} = {:.4f}".format(recall_all, len(gt_roidb), recall_all / len(gt_roidb)))
 
     def evaluate_ohem(self, all_boxes, output_dir, roidb):
         gt_roidb = roidb

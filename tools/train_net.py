@@ -1,3 +1,4 @@
+## caffe train faster-rcnn
 import _init_paths
 from fast_rcnn.train import get_training_roidb, train_net
 from fast_rcnn.config import cfg, cfg_from_file, cfg_from_list, get_output_dir
@@ -96,8 +97,7 @@ if __name__ == '__main__':
     print '{:d} roidb entries'.format(len(roidb))
     print len(imdb._image_index)
 
-
-    output_dir = get_output_dir(imdb)
+    output_dir = os.path.join(get_output_dir(imdb, args.solver.split('/')[-2]))
     print 'Output will be saved to `{:s}`'.format(output_dir)
 
     train_net(args.solver, roidb, output_dir,

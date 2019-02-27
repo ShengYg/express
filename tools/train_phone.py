@@ -1,7 +1,8 @@
+## pytorch train google
 import _init_paths
+import cv2
 import os
 import torch
-import cv2
 import cPickle
 import numpy as np
 from datetime import datetime
@@ -49,25 +50,25 @@ def prepare_roidb(imdb):
 
 if __name__ == '__main__':
     path = os.path.join(os.getcwd(), 'experiments', 'logs')
-    filename = 'phone_train_' + time.strftime("%Y%m%d-%H%M%S") + '.log'
+    # filename = 'phone_train_' + time.strftime("%Y%m%d-%H%M%S") + '.log'
     configure("runs/phone")
 
     imdb_name = 'phone_train'
 
-    start_step = 40000
-    end_step = 100000
-    lr_decay_steps = [70000, 100000]
+    start_step = 0
+    end_step = 20000
+    lr_decay_steps = [5000, 12500, 15000]
     ohem_steps = a = range(40000, 95000, 5000)
     lr_decay = 1./10
-    lr = 0.001
+    lr = 0.01
     momentum = 0.9
     weight_decay = 0.0005
     disp_interval = 20
     log_interval = 20
-    snap_interval = 4000
+    snap_interval = 2000
     width = 256
     height = 48
-    batch_size = 128
+    batch_size = 256
     iter_size = 1
 
     cfg = dict(
@@ -112,8 +113,8 @@ if __name__ == '__main__':
     
 
     # imdb = get_imdb(imdb_name)
-    # imdb = get_imdb(imdb_name, os.path.join('data', 'express', 'pretrain_db_benchmark'), ratio=0.8)
-    imdb = get_imdb(imdb_name, os.path.join('data', 'express', 'pretrain_db_benchmark_extra'), ratio=0.8)
+    imdb = get_imdb(imdb_name, os.path.join('data', 'express', 'pretrain_db_benchmark'), ratio=0.8)
+    # imdb = get_imdb(imdb_name, os.path.join('data', 'express', 'pretrain_db_benchmark_extra'), ratio=0.8)
     prepare_roidb(imdb)
     roidb = imdb.roidb
     print 'roidb length: {}'.format(len(roidb))
@@ -127,10 +128,13 @@ if __name__ == '__main__':
     print 'init net'
     net = PhoneNet(classes=imdb.classes, bn=False)
     network.weights_normal_init(net)
-    # model_file = 'output/mnist_out/mnist_4200_no_bn.h5'
-    # network.load_pretrain_net(model_file, net, num=17*2)
-    model_file = 'output/phone_train/TIME-20171229-205253/phone_40000.h5'
-    network.load_net(model_file, net)
+
+    model_file = 'output/mnist_train/mnist_15000.h5'
+    network.load_pretrain_net(model_file, net, num=14*2)
+
+    # model_file = 'output/phone_train/TIME-20171229-205253/phone_40000.h5'
+    # network.load_net(model_file, net)
+
     net.cuda()
     net.train()
     params = list(net.parameters())[4*2:]
@@ -153,7 +157,7 @@ if __name__ == '__main__':
         # forward
         net(im_data, labels, length)
         loss = net.loss
-        train_loss += loss.data[0]
+        train_loss += loss.item()
         step_cnt += 1
 
         # backward
@@ -171,35 +175,35 @@ if __name__ == '__main__':
             log_print(log_text, color='green', attrs=['bold'])
 
             log_value('loss_all', train_loss / step_cnt, step)
-            log_value('loss1', net.out_loss[0].data.cpu().numpy()[0], step)
-            log_value('loss2', net.out_loss[1].data.cpu().numpy()[0], step)
-            log_value('loss3', net.out_loss[2].data.cpu().numpy()[0], step)
-            log_value('loss4', net.out_loss[3].data.cpu().numpy()[0], step)
-            log_value('loss5', net.out_loss[4].data.cpu().numpy()[0], step)
-            log_value('loss6', net.out_loss[5].data.cpu().numpy()[0], step)
-            log_value('loss7', net.out_loss[6].data.cpu().numpy()[0], step)
-            log_value('loss8', net.out_loss[7].data.cpu().numpy()[0], step)
-            log_value('loss9', net.out_loss[8].data.cpu().numpy()[0], step)
-            log_value('loss10', net.out_loss[9].data.cpu().numpy()[0], step)
-            log_value('loss11', net.out_loss[10].data.cpu().numpy()[0], step)
-            log_value('loss12', net.out_loss[11].data.cpu().numpy()[0], step)
-            log_value('loss_length', net.out_loss[12].data.cpu().numpy()[0], step)
+            log_value('loss1', net.out_loss[0].data.cpu().numpy(), step)
+            log_value('loss2', net.out_loss[1].data.cpu().numpy(), step)
+            log_value('loss3', net.out_loss[2].data.cpu().numpy(), step)
+            log_value('loss4', net.out_loss[3].data.cpu().numpy(), step)
+            log_value('loss5', net.out_loss[4].data.cpu().numpy(), step)
+            log_value('loss6', net.out_loss[5].data.cpu().numpy(), step)
+            log_value('loss7', net.out_loss[6].data.cpu().numpy(), step)
+            log_value('loss8', net.out_loss[7].data.cpu().numpy(), step)
+            log_value('loss9', net.out_loss[8].data.cpu().numpy(), step)
+            log_value('loss10', net.out_loss[9].data.cpu().numpy(), step)
+            log_value('loss11', net.out_loss[10].data.cpu().numpy(), step)
+            log_value('loss12', net.out_loss[11].data.cpu().numpy(), step)
+            log_value('loss_length', net.out_loss[12].data.cpu().numpy(), step)
 
             with open(os.path.join(log_out, 'log.csv'), 'a') as f:
                 log = [step, lr, train_loss / step_cnt]
-                log += [net.out_loss[0].data.cpu().numpy()[0]]
-                log += [net.out_loss[1].data.cpu().numpy()[0]]
-                log += [net.out_loss[2].data.cpu().numpy()[0]]
-                log += [net.out_loss[3].data.cpu().numpy()[0]]
-                log += [net.out_loss[4].data.cpu().numpy()[0]]
-                log += [net.out_loss[5].data.cpu().numpy()[0]]
-                log += [net.out_loss[6].data.cpu().numpy()[0]]
-                log += [net.out_loss[7].data.cpu().numpy()[0]]
-                log += [net.out_loss[8].data.cpu().numpy()[0]]
-                log += [net.out_loss[9].data.cpu().numpy()[0]]
-                log += [net.out_loss[10].data.cpu().numpy()[0]]
-                log += [net.out_loss[11].data.cpu().numpy()[0]]
-                log += [net.out_loss[12].data.cpu().numpy()[0]]
+                log += [net.out_loss[0].data.cpu().numpy()]
+                log += [net.out_loss[1].data.cpu().numpy()]
+                log += [net.out_loss[2].data.cpu().numpy()]
+                log += [net.out_loss[3].data.cpu().numpy()]
+                log += [net.out_loss[4].data.cpu().numpy()]
+                log += [net.out_loss[5].data.cpu().numpy()]
+                log += [net.out_loss[6].data.cpu().numpy()]
+                log += [net.out_loss[7].data.cpu().numpy()]
+                log += [net.out_loss[8].data.cpu().numpy()]
+                log += [net.out_loss[9].data.cpu().numpy()]
+                log += [net.out_loss[10].data.cpu().numpy()]
+                log += [net.out_loss[11].data.cpu().numpy()]
+                log += [net.out_loss[12].data.cpu().numpy()]
                 log += [(datetime.now() - timestamp_start).total_seconds()]
                 log = map(str, log)
                 f.write(','.join(log) + '\n')

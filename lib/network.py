@@ -129,7 +129,7 @@ def clip_gradient(model, clip_norm):
         if p.requires_grad:
             modulenorm = p.grad.data.norm()
             totalnorm += modulenorm ** 2
-    totalnorm = np.sqrt(totalnorm)
+    totalnorm = np.sqrt(totalnorm.cpu().numpy())
 
     norm = clip_norm / max(totalnorm, clip_norm)
     for p in model.parameters():

@@ -2,7 +2,7 @@ EXP_DIR: .
 
 ## caffe express
 TRAIN:
-  SNAPSHOT_ITERS: 5000
+  SNAPSHOT_ITERS: 2500
   HAS_RPN: True
   SCALES:  !!python/tuple [350,]
   MAX_SIZE: 650

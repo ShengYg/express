@@ -1,3 +1,5 @@
+## caffe pretrain using mnist
+## caffe pretrain faster-rcnn
 import _init_paths
 from fast_rcnn.config import cfg, cfg_from_file, cfg_from_list, get_output_dir
 from datasets.factory import get_imdb

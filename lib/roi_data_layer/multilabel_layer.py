@@ -142,24 +142,21 @@ class MultilabelDataLayer(object):
             crop_w = w
             crop_h = h
         else:
-            # print 'it means you are using random shifted image'
-            crop_x = np.random.randint(x)
-            crop_w = np.random.randint(x+w, im_shape[1]-1) - crop_x
-            crop_y = np.random.randint(y)
-            crop_h = np.random.randint(y+h, im_shape[0]-1) - crop_y
-            crop_img = im[crop_y:crop_y+crop_h, crop_x:crop_x+crop_w, :]
+            # 1. random shifted image'
+            # crop_x = np.random.randint(x)
+            # crop_w = np.random.randint(x+w, im_shape[1]-1) - crop_x
+            # crop_y = np.random.randint(y)
+            # crop_h = np.random.randint(y+h, im_shape[0]-1) - crop_y
+            # crop_img = im[crop_y:crop_y+crop_h, crop_x:crop_x+crop_w, :]
+            # 2. original image
+            crop_img = im[y:y+h, x:x+w, :]
+            crop_w, crop_h = w, h
 
-        # v1
         im_scale_x = float(self._width) / float(crop_w)
         im_scale_y = float(self._height ) / float(crop_h)
         crop_img = cv2.resize(crop_img, None, None, fx=im_scale_x, fy=im_scale_y,
                         interpolation=cv2.INTER_LINEAR)
-        # # v2
-        # im_scale = float(self._width) / float(crop_w)
-        # if im_scale * crop_h > self._height:
-        #     im_scale = float(self._height ) / float(crop_h)
-        # crop_img = cv2.resize(crop_img, None, None, fx=im_scale, fy=im_scale,
-        #                 interpolation=cv2.INTER_LINEAR)
+
         return crop_img
 
     def forward(self):

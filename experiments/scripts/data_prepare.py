@@ -341,7 +341,11 @@ def main(dataset_path, info_path, namelist_path, namelist_type=0, exclude_nameli
                                 go_on = True
                         if not go_on:
                             assert len(phone_label) == phone_box.shape[0], 'pic: {}, lebel: {}, box: {}'.format(num, phone_label, phone_box.shape[0])
-                            # phone_label = gt_phone[key]
+                            try:
+                                gt_phone[key]
+                            except:
+                                print 'no key'
+                                continue
                             ind = phone_match(phone_label, gt_phone[key])
                             assert len(ind) > 0
                             if (np.array(ind) == False).any():
@@ -370,14 +374,15 @@ def main(dataset_path, info_path, namelist_path, namelist_type=0, exclude_nameli
         random.shuffle(namelist)
         print 'namelist length: {}'.format(len(namelist))
         if namelist_type == 3:
-            namelist = namelist[:1000]
+            namelist = namelist[:1400]
             print 'type3: selected namelist length: {}'.format(len(namelist))
         with open(namelist_path, 'wb') as fid:
             cPickle.dump(namelist, fid, cPickle.HIGHEST_PROTOCOL)
 
 if __name__ == '__main__':
 
-    # 1.
+    ## 1. all bbox information
+    ## [phone_box, phone_label, img_size]
     dataset_path = 'data/express/dataset/'
     info_path = 'data/express/info.pkl'
     namelist_path = 'data/express/namelist.pkl'
@@ -386,7 +391,8 @@ if __name__ == '__main__':
     random.seed(1024)
     main(dataset_path, info_path, namelist_path, namelist_type, exclude_namelist)
 
-    # 2.
+    ## 2. some bbox information(bbox right, phone right, choose 1000), for test detection+recognition
+    ## [phone_box, phone_label, img_size, num_box]
     dataset_path = 'data/express/dataset/'
     info_path = 'data/express/info_test.pkl'
     namelist_path = 'data/express/namelist_test.pkl'
@@ -395,7 +401,8 @@ if __name__ == '__main__':
     random.seed(1024)
     main(dataset_path, info_path, namelist_path, namelist_type, exclude_namelist)
 
-    # 3.
+    ## 3. some bbox information(bbox right, exclude namelist_test), for train/test detection
+    ## [phone_box, phone_label, img_size]
     dataset_path = 'data/express/dataset/'
     info_path = 'data/express/info_express.pkl'
     namelist_path = 'data/express/namelist_express.pkl'
@@ -404,7 +411,8 @@ if __name__ == '__main__':
     random.seed(1024)
     main(dataset_path, info_path, namelist_path, namelist_type, exclude_namelist)
 
-    # 4
+    ## 4. some bbox information(phone right, exclude namelist_test), for train/test recognition
+    ## [phone_box, phone_label, img_size, num_box]
     dataset_path = 'data/express/dataset/'
     info_path = 'data/express/info_phone.pkl'
     namelist_path = 'data/express/namelist_phone.pkl'

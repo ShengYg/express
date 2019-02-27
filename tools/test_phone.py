@@ -1,7 +1,7 @@
 import _init_paths
+import cv2
 import os
 import torch
-import cv2
 import cPickle
 import numpy as np
 from collections import Counter
@@ -40,8 +40,8 @@ def phone_append(a):
 if __name__ == '__main__':
     # hyper-parameters
     imdb_name = 'phone_test'
-    model_path = 'output/phone_train/TIME-20180106-121843/'
-    model_name = 'phone_88000.h5'
+    model_path = 'output/phone_train/TIME-20190223-092831/'
+    model_name = 'phone_20000.h5'
     trained_model = model_path + model_name
 
     rand_seed = 1024

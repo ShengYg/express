@@ -1,4 +1,5 @@
 import _init_paths
+import cv2
 import os
 import torch
 import torch.nn as nn
@@ -7,7 +8,6 @@ from torch.autograd import Variable
 import numpy as np
 from datetime import datetime
 import pprint
-import cv2
 
 import network
 from utils.timer import Timer
@@ -43,7 +43,7 @@ def prepare_roidb(imdb):
 class Net(nn.Module):
     def __init__(self, bn=False):
         super(Net, self).__init__()
-        self.conv1 = nn.Sequential(Conv2d(3, 64, 3, same_padding=True, bn=bn),
+        self.conv1 = nn.Sequential(Conv2d(1, 64, 3, same_padding=True, bn=bn),
                                    nn.MaxPool2d(2))
         self.conv2 = nn.Sequential(Conv2d(64, 128, 3, same_padding=True, bn=bn),
                                    Conv2d(128, 128, 3, same_padding=True, bn=bn),
@@ -60,12 +60,12 @@ class Net(nn.Module):
                                    Conv2d(512, 512, 3, same_padding=True, bn=bn),
                                    Conv2d(512, 512, 3, same_padding=True, bn=bn),
                                    Conv2d(512, 512, 3, same_padding=True, bn=bn),
-                                   Conv2d(512, 512, 3, same_padding=True, bn=bn),
-                                   nn.MaxPool2d(2))
-        self.conv5 = nn.Sequential(Conv2d(512, 512, 3, same_padding=True, bn=bn),
-                                   Conv2d(512, 512, 3, same_padding=True, bn=bn),
-                                   Conv2d(512, 512, 3, same_padding=True, bn=bn))
-        self.fc6 = FC(512 * 8 * 4, 256)
+                                   Conv2d(512, 512, 3, same_padding=True, bn=bn),)
+        #                            nn.MaxPool2d(2))
+        # self.conv5 = nn.Sequential(Conv2d(512, 512, 3, same_padding=True, bn=bn),
+        #                            Conv2d(512, 512, 3, same_padding=True, bn=bn),
+        #                            Conv2d(512, 512, 3, same_padding=True, bn=bn))
+        self.fc6 = FC(512 * 6 * 3, 256)
         self.score_fc = FC(256, 10)
         self.loss = None
         self.cls_prob = None
@@ -76,7 +76,7 @@ class Net(nn.Module):
         x = self.conv2(x)
         x = self.conv3(x)
         x = self.conv4(x)
-        x = self.conv5(x)
+        # x = self.conv5(x)
         x = x.view(x.size()[0], -1)
         y = self.fc6(x)
         y = F.dropout(y, training=self.training)
@@ -85,6 +85,38 @@ class Net(nn.Module):
             self.loss = F.cross_entropy(y, network.np_to_variable(labels, is_cuda=True, dtype=torch.LongTensor))
         self.cls_prob = F.softmax(y)
         return self.cls_prob
+
+    def get_image_blob(self, im):
+        
+        im_orig = im.astype(np.float32, copy=True)
+        im_orig -= np.array([104.00698793])
+
+        im_shape = im_orig.shape
+        im_scale_x = float(cfg.TEST.WIDTH) / float(im_shape[1])
+        im_scale_y = float(cfg.TEST.HEIGHT) / float(im_shape[0])
+
+        processed_ims = []
+        im = cv2.resize(im_orig, None, None, fx=im_scale_x, fy=im_scale_y,
+                        interpolation=cv2.INTER_LINEAR)
+        processed_ims.append(im)
+
+        # Create a blob to hold the input images
+        blob = self._im_list_to_blob(processed_ims)
+
+        return blob
+
+    def _im_list_to_blob(self, ims):
+        img_shape = ims[0].shape   
+        num_images = len(ims)
+        blob = np.zeros((num_images, img_shape[0], img_shape[1], 1),    
+                        dtype=np.float32)           #[nums, h, w, 3]
+        for i in xrange(num_images):
+            im = ims[i]
+            blob[i, 0:im.shape[0], 0:im.shape[1], :] = im[:, :, np.newaxis]
+        # Axis order will become: (batch elem, channel, height, width)
+        channel_swap = (0, 3, 1, 2)
+        blob = blob.transpose(channel_swap)
+        return blob
 
 class Net1(nn.Module):
     def __init__(self, bn=False):
@@ -200,8 +232,8 @@ class Net1(nn.Module):
 def train(net, optimizer, lr):
     print 'starting training'
     start_step = 0
-    end_step = 15000
-    lr_decay_steps = {12000, 14000}
+    end_step = 2000
+    lr_decay_steps = {1000, 1500,}
     lr_decay = 1./10
 
     train_loss = 0
@@ -219,7 +251,8 @@ def train(net, optimizer, lr):
         # forward
         net(im_data, labels)
         loss = net.loss
-        train_loss += loss.data[0]
+        # train_loss += loss.data[0]
+        train_loss += loss.item()
         step_cnt += 1
 
         # backward
@@ -267,7 +300,7 @@ if __name__ == '__main__':
     formatter = logging.Formatter('[%(levelname)-8s] %(message)s')
     console.setFormatter(formatter)
     logging.getLogger().addHandler(console)
-    configure("runs/phone")
+    configure("runs/mnist")
 
     imdb_name = 'mnist_train'
     cfg_file = 'experiments/cfgs/train_mnist.yml'
@@ -303,7 +336,8 @@ if __name__ == '__main__':
 
     # load net
     print 'init net'
-    net = Net1()
+    # net = Net1()
+    net = Net()
     network.weights_normal_init(net)
 
     net.cuda()
