@@ -25,6 +25,7 @@ python experiments/scripts/phone_prepare.py
 4、训练、测试定位网络
 ```
 ./experiments/scripts/train.sh
+python tools/test_net.py
 ```
 文件包含了训练和测试的代码，测试时的输入网络位置需要自己设定。
 
