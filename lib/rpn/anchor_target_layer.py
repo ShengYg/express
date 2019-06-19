@@ -10,7 +10,7 @@ import yaml
 from fast_rcnn.config import cfg
 import numpy as np
 import numpy.random as npr
-from generate_anchors import generate_anchors_express
+from generate_anchors import generate_anchors_express, generate_anchors
 from utils.cython_bbox import bbox_overlaps
 from fast_rcnn.bbox_transform import bbox_transform
 
@@ -39,6 +39,7 @@ class AnchorTargetLayer(caffe.Layer):
     def setup(self, bottom, top):
         layer_params = yaml.load(self.param_str)
         self._anchors = generate_anchors_express()
+        # self._anchors = generate_anchors()
         self._num_anchors = self._anchors.shape[0]      # 9
         self._feat_stride = layer_params['feat_stride'] # 16
 

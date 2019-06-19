@@ -159,3 +159,8 @@ if __name__ == '__main__':
         i += 1
         pbar.update(i)
     pbar.finish()
+
+
+    img = cv2.imread(path1 + name, 0)
+    if img.shape[0] < 300:
+        continue

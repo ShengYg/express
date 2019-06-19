@@ -21,8 +21,8 @@ def _compute_iou(a, b):
 if __name__ == '__main__':
     all_boxes = None
 
-    test_def = os.path.join(os.getcwd(), 'models', 'express', 'VGG16_4_multi', 'test.prototxt')
-    caffemodel = os.path.join(os.getcwd(), 'output', 'express_train', 'VGG16_4_multi', 'express_iter_15000.caffemodel')
+    test_def = os.path.join(os.getcwd(), 'models', 'express', 'VGG16_4', 'test.prototxt')
+    caffemodel = os.path.join(os.getcwd(), 'output', 'express_train', 'VGG16_4_param1', 'express_iter_20000.caffemodel')
     imdb_name = 'express_test'
     cfg_file = 'experiments/cfgs/train.yml'
     cfg.GPU_ID = 0
@@ -44,11 +44,11 @@ if __name__ == '__main__':
         caffe.set_device(0)
         net = caffe.Net(test_def, caffemodel, caffe.TEST)
         net.name = os.path.splitext(os.path.basename(caffemodel))[0]
-        all_boxes = test_net(net, imdb, output_dir, thresh=0.1, iou_thres=0.6)
+        all_boxes = test_net(net, imdb, output_dir, thresh=0.1, iou_thres=0.5)
     imdb.evaluate_detections(all_boxes, output_dir, iou_thres=0.5)
 
-    ap = 0
-    for item in [x / 100. for x in range(50,100,5)]:
-        ap += imdb.evaluate_detections(all_boxes, output_dir, iou_thres=item)
-    print 'map[0.5,0.95]: ', ap/10
+    # ap = 0
+    # for item in [x / 100. for x in range(50,100,5)]:
+    #     ap += imdb.evaluate_detections(all_boxes, output_dir, iou_thres=item)
+    # print 'map[0.5,0.95]: ', ap/10
 

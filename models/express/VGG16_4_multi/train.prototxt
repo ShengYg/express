@@ -216,6 +216,31 @@ layer {
   top: "conv3_3"
 }
 layer {
+  name: "conv3_4"
+  type: "Convolution"
+  bottom: "conv3_3"
+  top: "conv3_4"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  convolution_param {
+    num_output: 128
+    pad: 0
+    kernel_size: 1
+    weight_filler { type: "xavier" }
+    bias_filler { type: "constant" value: 0 }
+  }
+}
+layer {
+  name: "relu3_4"
+  type: "ReLU"
+  bottom: "conv3_4"
+  top: "conv3_4"
+}
+layer {
   name: "pool3"
   type: "Pooling"
   bottom: "conv3_3"
@@ -304,13 +329,82 @@ layer {
   top: "conv4_3"
 }
 
+layer {
+  name: "deconv4"
+  type: "Deconvolution"
+  bottom: "conv4_3"
+  top: "deconv4"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  convolution_param {
+    num_output: 256
+    kernel_size: 4
+    stride: 2
+    pad: 1
+    weight_filler {type: "xavier"}
+  }
+}
+layer {
+  name: "conv4_4"
+  type: "Convolution"
+  bottom: "deconv4"
+  top: "conv4_4"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  convolution_param {
+    num_output: 128
+    pad: 0
+    kernel_size: 1
+    weight_filler { type: "xavier" }
+    bias_filler { type: "constant" value: 0 }
+  }
+}
+layer {
+  name: "relu4_4"
+  type: "ReLU"
+  bottom: "conv4_4"
+  top: "conv4_4"
+}
+layer {
+  name: "conv4_4_c"
+  type: "Crop"
+  bottom: "conv4_4"
+  bottom: "conv3_4"
+  top: "conv4_4_c"
+  crop_param {
+    axis: 2
+    offset: 0
+  }
+}
+
+
+layer {
+  name: "concatRPN"
+  bottom: "conv4_4_c"
+  bottom: "conv3_4"
+  top: "concatRPNout"
+  type: "Concat"
+  concat_param {
+    axis: 1
+  }
+}
 
 #========= RPN ============
 
 layer {
   name: "rpn_conv/3x3"
   type: "Convolution"
-  bottom: "conv4_3"
+  bottom: "concatRPNout"
   top: "rpn/output"
   param { lr_mult: 1.0 }
   param { lr_mult: 2.0 }
@@ -381,7 +475,7 @@ layer {
   python_param {
     module: 'rpn.anchor_target_layer'
     layer: 'AnchorTargetLayer'
-    param_str: "'feat_stride': 8"
+    param_str: "'feat_stride': 4"
   }
 }
 
@@ -440,7 +534,7 @@ layer {
   python_param {
     module: 'rpn.proposal_layer_train'
     layer: 'ProposalLayerTrain'
-    param_str: "'feat_stride': 8"
+    param_str: "'feat_stride': 4"
   }
 }
 
@@ -498,6 +592,7 @@ layer {
     axis: 1
   }
 }
+
 layer {
   name: "conv_fc"
   type: "Convolution"
@@ -517,6 +612,7 @@ layer {
     bias_filler { type: "constant" value: 0 }
   }
 }
+
 layer {
   name: "fc6"
   type: "InnerProduct"

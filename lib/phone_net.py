@@ -196,5 +196,3 @@ class PhoneNet(nn.Module):
         channel_swap = (0, 3, 1, 2)
         blob = blob.transpose(channel_swap)
         return blob
-
-

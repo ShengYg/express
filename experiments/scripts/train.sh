@@ -13,9 +13,10 @@ export PYTHONUNBUFFERED="True"
 
 GPU_ID=0
 # NET="VGG16_3"
-# NET="VGG16_4"
+NET="VGG16_4"
 # NET="VGG16_4_multi"
-NET="VGG16_4_multi_RPN"
+# NET="VGG16_4_multi_RPN"
+# NET="VGG16_4_OHEM"
 DATASET=express
 
 
